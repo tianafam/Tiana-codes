@@ -1,10 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
+import { Check, ChevronDown, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
+import DemoGuide from "@/components/DemoGuide";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { setPersona, usePersonaId } from "@/lib/persona";
+import { useCurrentPersona, usePersonas } from "@/lib/hooks";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { vurl } from "@/lib/persona";
 import { apiPost } from "@/lib/api";
 import { useVisitMutation } from "@/lib/hooks";
 import type { Visit } from "@/lib/types";
@@ -20,14 +27,17 @@ const PATIENT_NAV = [
 export default function AppShell({ children, mode = "patient" }: { children: ReactNode; mode?: "patient" | "clinician" }) {
   const navigate = useNavigate();
   const [resetOpen, setResetOpen] = useState(false);
-  const reset = useVisitMutation(() => apiPost<Visit>("/visit/reset"));
+  const reset = useVisitMutation(() => apiPost<Visit>(vurl("/visit/reset")));
   const clinician = mode === "clinician";
+  const personaId = usePersonaId();
+  const personas = usePersonas();
+  const persona = useCurrentPersona();
 
   const doReset = () =>
     reset.mutate(undefined, {
       onSuccess: () => {
         setResetOpen(false);
-        toast.success("Demo reset — Alex's journey starts fresh");
+        toast.success(`Demo reset — ${persona?.patient.name ?? "the"} journey starts fresh`);
         navigate("/");
       },
     });
@@ -81,6 +91,41 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                data-testid="persona-switcher-btn"
+                className="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 text-sm hover:border-eucalypt/50 transition-colors duration-200"
+              >
+                <span className="size-7 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-[11px] font-semibold">{persona?.initials ?? "…"}</span>
+                <span data-testid="persona-current-name" className="hidden sm:inline text-ink">{persona?.patient.name.split(" ")[0] ?? "Persona"}</span>
+                <ChevronDown className="size-3.5 text-ink-muted" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Demo persona</DropdownMenuLabel>
+                  {(personas.data ?? []).map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      data-testid={`persona-option-${p.id}`}
+                      onClick={() => {
+                        if (p.id === personaId) return;
+                        setPersona(p.id);
+                        toast.success(`Now demoing ${p.patient.name}`);
+                        navigate(clinician ? "/clinician" : "/");
+                      }}
+                      className="items-start gap-3 py-2"
+                    >
+                      <span className="mt-0.5 size-7 rounded-full bg-eucalypt-soft text-eucalypt grid place-items-center text-[11px] font-semibold shrink-0">{p.initials}</span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium text-ink">{p.patient.name}, {p.patient.age}</span>
+                        <span className="block text-xs text-ink-muted">{p.tagline}</span>
+                      </span>
+                      {p.id === personaId && <Check className="size-4 text-eucalypt mt-1" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div role="tablist" aria-label="Demo role" className="flex rounded-full bg-sand p-1 border border-line">
               <button
                 role="tab"
@@ -144,7 +189,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
           <DialogHeader>
             <DialogTitle className="font-heading text-xl">Reset the demo?</DialogTitle>
             <DialogDescription>
-              This clears Alex's questionnaire, booking, brief, clinical notes and follow-up tasks so you can run the journey again.
+              This clears {persona?.patient.name ?? "this persona"}'s questionnaire, booking, brief, clinical notes and follow-up tasks so you can run the journey again.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -157,7 +202,8 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Toaster richColors />
+      <DemoGuide />
+      <Toaster richColors offset={{ bottom: 80, right: 20 }} />
     </div>
   );
 }

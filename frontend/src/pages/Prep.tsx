@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { ArrowRight, Check, FileText, Link2, Lock, Pencil, Share2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, Check, Download, FileText, Printer, Link2, Lock, Pencil, Share2, Sparkles, Wand2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { vurl } from "@/lib/persona";
 import { apiPost, apiPut } from "@/lib/api";
-import { formatDateTime, useVisit, useVisitMutation } from "@/lib/hooks";
+import { formatDateTime, useCurrentPersona, useVisit, useVisitMutation } from "@/lib/hooks";
 import { PREP_LABELS } from "@/lib/types";
 import type { Brief, BriefUpdate, GenerateBriefRequest, PrepField, PrepForm, Questionnaire, Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -25,15 +26,6 @@ const FIELDS: { key: PrepField; placeholder: string; rows: number }[] = [
   { key: "concerns", placeholder: "What are you worried about?", rows: 2 },
   { key: "questions", placeholder: "One question per line", rows: 3 },
 ];
-
-const ALEX_EXTRA: Partial<PrepForm> = {
-  symptoms: "Dry, tickly cough, worst at night and keeping me awake. A little wheezy when I go for a run. No fever now.",
-  previous_care: "Haven't seen a doctor yet. Tried honey and lemon and throat lozenges, which help a bit.",
-  history: "Mild asthma as a child, haven't used a puffer in years. I don't smoke or vape.",
-  medications: "Throat lozenges from the pharmacy",
-  concerns: "I'm worried it might be something serious because it isn't going away.",
-  questions: "Could this be my asthma coming back?\nDo I need a chest X-ray?\nWhat can I do to sleep better tonight?",
-};
 
 const EMPTY: PrepForm = {
   main_concern: "", symptoms: "", duration: "", previous_care: "", history: "", medications: "", concerns: "", questions: "", prefilled_fields: [],
@@ -91,18 +83,20 @@ export default function Prep() {
 function PrepWorkspace({ visit }: { visit: Visit }) {
   const [form, setForm] = useState<PrepForm>(() => initialPrep(visit));
   const [highlight, setHighlight] = useState<string | null>(null);
-  const savePrep = useVisitMutation((p: PrepForm) => apiPut<Visit>("/visit/prep", p), "Details saved");
-  const generate = useVisitMutation((b: GenerateBriefRequest) => apiPost<Visit>("/visit/brief/generate", b));
+  const savePrep = useVisitMutation((p: PrepForm) => apiPut<Visit>(vurl("/visit/prep"), p), "Details saved");
+  const generate = useVisitMutation((b: GenerateBriefRequest) => apiPost<Visit>(vurl("/visit/brief/generate"), b));
   const prefilled = new Set(form.prefilled_fields);
   const hasAny = FIELDS.some((f) => form[f.key].trim());
 
   const set = (k: PrepField, val: string) =>
     setForm((f) => ({ ...f, [k]: val, prefilled_fields: f.prefilled_fields.filter((x) => x !== k || val === f[k]) }));
 
-  const fillAlex = () =>
+  const persona = useCurrentPersona();
+  const fillDemo = () =>
+    persona &&
     setForm((f) => {
       const next = { ...f };
-      (Object.keys(ALEX_EXTRA) as PrepField[]).forEach((k) => { if (!next[k].trim()) next[k] = ALEX_EXTRA[k] ?? ""; });
+      FIELDS.forEach(({ key }) => { if (!next[key].trim() && persona.demo_prep[key]) next[key] = persona.demo_prep[key]; });
       return next;
     });
 
@@ -111,9 +105,11 @@ function PrepWorkspace({ visit }: { visit: Visit }) {
       <section className="lg:col-span-5 rounded-3xl bg-white border border-line p-5 sm:p-6 animate-fade-up">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xl text-ink">Your details</h2>
-          <Button variant="ghost" size="sm" data-testid="prep-fill-alex-btn" onClick={fillAlex}>
-            <Wand2 className="size-4" /> Fill Alex's details
-          </Button>
+          {persona && (
+            <Button variant="ghost" size="sm" data-testid="prep-fill-demo-btn" onClick={fillDemo}>
+              <Wand2 className="size-4" /> Fill {persona.patient.name.split(" ")[0]}'s details
+            </Button>
+          )}
         </div>
         {form.prefilled_fields.length > 0 && (
           <p data-testid="prep-prefill-notice" className="mt-2 text-xs text-eucalypt bg-eucalypt-soft rounded-xl px-3 py-2">
@@ -200,7 +196,7 @@ function BriefEditor({ brief, visit, onHighlight }: { brief: Brief; visit: Visit
   const [texts, setTexts] = useState<Record<string, string>>(() => Object.fromEntries(brief.points.map((p) => [p.id, p.text])));
   const [shared, setShared] = useState(brief.shared);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const save = useVisitMutation((b: BriefUpdate) => apiPut<Visit>("/visit/brief", b), shared ? "Brief saved and shared with your clinician" : "Brief saved privately");
+  const save = useVisitMutation((b: BriefUpdate) => apiPut<Visit>(vurl("/visit/brief"), b), shared ? "Brief saved and shared with your clinician" : "Brief saved privately");
   const dirty = brief.status !== "saved" || shared !== brief.shared || brief.points.some((p) => texts[p.id] !== p.text);
 
   const sections: string[] = [...new Set(brief.points.map((p) => p.section))];
@@ -300,7 +296,22 @@ function BriefEditor({ brief, visit, onHighlight }: { brief: Brief; visit: Visit
           <p className="text-xs text-ink-muted" data-testid="brief-saved-at">
             {brief.saved_at ? `Last saved ${formatDateTime(brief.saved_at)}` : "Not saved yet"}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {!dirty && (
+              <>
+                <a
+                  href={`/api${vurl("/visit/brief/pdf")}`}
+                  download
+                  data-testid="download-brief-pdf-btn"
+                  className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-white")}
+                >
+                  <Download className="size-4" /> PDF
+                </a>
+                <Link to="/brief/print" data-testid="print-brief-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-white")}>
+                  <Printer className="size-4" /> Print
+                </Link>
+              </>
+            )}
             {brief.status === "saved" && !dirty && (
               <Link to="/journey" data-testid="brief-continue-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
                 Back to journey

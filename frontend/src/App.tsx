@@ -6,6 +6,7 @@ import Prep from "@/pages/Prep";
 import Clinician from "@/pages/Clinician";
 import Actions from "@/pages/Actions";
 import Journey from "@/pages/Journey";
+import BriefPrint from "@/pages/BriefPrint";
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/clinician" element={<Clinician />} />
       <Route path="/actions" element={<Actions />} />
       <Route path="/journey" element={<Journey />} />
+      <Route path="/brief/print" element={<BriefPrint />} />
       <Route path="*" element={<Home />} />
     </Routes>
   );

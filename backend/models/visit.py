@@ -150,6 +150,7 @@ class Instruction(BaseModel):
     id: str
     kind: InstructionKind
     text: str = Field(min_length=1)
+    approved: bool = False  # clinician ticks each item before release
 
 
 class ClinicalNotes(BaseModel):
@@ -165,6 +166,8 @@ class Consult(BaseModel):
     instructions: list[Instruction] = []
     status: Literal["none", "draft", "approved"] = "none"
     ai_source: Optional[Literal["live", "fallback"]] = None
+    ai_notes: Optional[ClinicalNotes] = None  # untouched AI draft, for before/after comparison
+    ai_instructions: list[Instruction] = []
     edited: bool = False
     generated_at: Optional[str] = None
     approved_at: Optional[str] = None
@@ -182,7 +185,7 @@ class ConsultUpdate(BaseModel):
 
 
 class ApproveRequest(ConsultUpdate):
-    reviewed: bool
+    pass
 
 
 TaskStatus = Literal["suggested", "todo", "in_progress", "completed"]
@@ -207,8 +210,19 @@ class TaskStatusUpdate(BaseModel):
     status: Literal["todo", "in_progress", "completed"]
 
 
+class Persona(BaseModel):
+    id: str
+    initials: str
+    patient: Patient
+    tagline: str
+    quote: str
+    demo_questionnaire: Questionnaire
+    demo_prep: PrepForm
+
+
 class Visit(BaseModel):
     id: str
+    persona: str = "alex"
     patient: Patient
     questionnaire: Optional[Questionnaire] = None
     pathway: Optional[PathwaySuggestion] = None

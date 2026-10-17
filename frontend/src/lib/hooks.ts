@@ -1,15 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, apiGet } from "@/lib/api";
-import type { Clinic, Service, Transcript, Visit } from "@/lib/types";
+import { usePersonaId, vurl } from "@/lib/persona";
+import type { Clinic, Persona, Service, Transcript, Visit } from "@/lib/types";
 
-export const VISIT_KEY = ["visit"] as const;
+export const visitKey = (persona: string) => ["visit", persona] as const;
 
-export const useVisit = () => useQuery({ queryKey: VISIT_KEY, queryFn: () => apiGet<Visit>("/visit") });
+export function useVisit() {
+  const persona = usePersonaId();
+  return useQuery({ queryKey: visitKey(persona), queryFn: () => apiGet<Visit>(vurl("/visit")) });
+}
+export const usePersonas = () => useQuery({ queryKey: ["personas"], queryFn: () => apiGet<Persona[]>("/personas"), staleTime: Infinity });
+/** The active persona's profile + demo answers (undefined while loading / offline). */
+export function useCurrentPersona(): Persona | undefined {
+  const id = usePersonaId();
+  return usePersonas().data?.find((p) => p.id === id);
+}
 export const useClinics = () => useQuery({ queryKey: ["clinics"], queryFn: () => apiGet<Clinic[]>("/clinics") });
 export const useServices = () => useQuery({ queryKey: ["services"], queryFn: () => apiGet<Service[]>("/services") });
-export const useTranscript = () =>
-  useQuery({ queryKey: ["transcript"], queryFn: () => apiGet<Transcript>("/demo/transcript") });
+export function useTranscript() {
+  const persona = usePersonaId();
+  return useQuery({ queryKey: ["transcript", persona], queryFn: () => apiGet<Transcript>(vurl("/demo/transcript")) });
+}
 
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
@@ -26,7 +38,7 @@ export function useVisitMutation<B>(fn: (body: B) => Promise<Visit>, successMess
   return useMutation({
     mutationFn: fn,
     onSuccess: (v) => {
-      qc.setQueryData(VISIT_KEY, v);
+      qc.setQueryData(visitKey(v.persona), v);
       if (successMessage) toast.success(successMessage);
     },
     onError: (e) => toast.error(errorMessage(e)),

@@ -1,6 +1,6 @@
 # VisitReady — SPEC
 
-AI-assisted healthcare journey demo (fictional). One visit doc (`id: visit-alex-001`, Mongo `visits`) links all four stages for patient Alex Turner.
+AI-assisted healthcare journey demo (fictional). Two fictional personas, each with one visit doc in Mongo `visits`: alex → `visit-alex-001` (cough → GP, Dr Sarah Lin) and priya → `visit-priya-001` (changing mole → Skin Check, Dr Marcus Vance at Carlton Family Medical). Every /api/visit* and /api/demo/transcript endpoint takes `?persona=alex|priya` (default alex, 404 if unknown). GET /api/personas lists them with demo answers. Frontend keeps the active persona in localStorage (`visitready-persona`, lib/persona.ts `vurl()`), with a header persona switcher.
 
 ## Roles
 No login. Header toggle: Patient (→ /journey) / Clinician (→ /clinician). "Reset demo" (header) → POST /api/visit/reset clears the visit.
@@ -13,9 +13,12 @@ No login. Header toggle: Patient (→ /journey) / Clinician (→ /clinician). "R
 - `/clinician`: load sample transcript (GET /api/demo/transcript), POST /api/visit/consult/generate → status draft. PUT /api/visit/consult (edits, draft only). POST /api/visit/consult/approve {notes, instructions, reviewed:true} → approved, locked, tasks created (status suggested) from instructions verbatim.
 - `/actions`: locked until approved. Confirm suggested tasks (POST /api/visit/tasks/confirm) → todo. PATCH /api/visit/tasks/{id} {status: todo|in_progress|completed} (409 if still suggested).
 - `/journey`: dashboard of 4 stages.
+- `/brief/print`: print-styled brief (window.print). GET /api/visit/brief/pdf?persona= → reportlab PDF download (lib/brief_pdf.py).
+- Clinician approval: each Instruction has `approved` bool; the clinician ticks each item (editing an item unticks it). Approve & release returns 422 unless every item is approved. Consult keeps `ai_notes` / `ai_instructions` (untouched AI draft) → "Before / After" word-diff tab (components/BeforeAfter.tsx). `edited` = final differs from the AI draft.
+- Demo guide: a floating "Demo guide" button (bottom-right) opens a Sheet with a 9-step checklist that ticks itself off from visit state, with Go links.
 
 ## Business rules enforced server-side
-409 for: brief without booking, notes without booking, edits after approval, confirming tasks before approval, status change on unconfirmed task. 422 approve without reviewed.
+409 for: brief without booking, notes without booking, edits after approval, confirming tasks before approval, status change on unconfirmed task. 422 approve unless all instructions are approved.
 
 ## AI
 lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed text; any failure → labelled fallback (`ai_source: "fallback"`).

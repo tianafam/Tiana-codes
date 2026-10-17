@@ -41,16 +41,17 @@ export interface GenerateBriefRequest { prep: PrepForm; use_fallback: boolean }
 export interface BriefUpdate { points: { id: string; text: string }[]; shared: boolean }
 
 export type InstructionKind = "appointment" | "test" | "referral" | "medication" | "self_care";
-export interface Instruction { id: string; kind: InstructionKind; text: string }
+export interface Instruction { id: string; kind: InstructionKind; text: string; approved: boolean }
 export interface ClinicalNotes { subjective: string; objective: string; assessment: string; plan: string }
 export interface Consult {
   transcript: string; notes: ClinicalNotes | null; instructions: Instruction[];
-  status: "none" | "draft" | "approved"; ai_source: "live" | "fallback" | null; edited: boolean;
+  status: "none" | "draft" | "approved"; ai_source: "live" | "fallback" | null;
+  ai_notes: ClinicalNotes | null; ai_instructions: Instruction[]; edited: boolean;
   generated_at: string | null; approved_at: string | null; approved_by: string | null;
 }
 export interface GenerateNotesRequest { transcript: string; use_fallback: boolean }
 export interface ConsultUpdate { notes: ClinicalNotes; instructions: Instruction[] }
-export interface ApproveRequest extends ConsultUpdate { reviewed: boolean }
+export type ApproveRequest = ConsultUpdate;
 
 export type TaskStatus = "suggested" | "todo" | "in_progress" | "completed";
 export interface Task {
@@ -60,8 +61,13 @@ export interface Task {
 export interface ConfirmTasksRequest { task_ids: string[] }
 export interface TaskStatusUpdate { status: Exclude<TaskStatus, "suggested"> }
 
+export interface Persona {
+  id: string; initials: string; patient: Patient; tagline: string; quote: string;
+  demo_questionnaire: Questionnaire; demo_prep: PrepForm;
+}
+
 export interface Visit {
-  id: string; patient: Patient; questionnaire: Questionnaire | null; pathway: PathwaySuggestion | null;
+  id: string; persona: string; patient: Patient; questionnaire: Questionnaire | null; pathway: PathwaySuggestion | null;
   booking: Booking | null; prep: PrepForm | null; brief: Brief | null; consult: Consult; tasks: Task[];
   updated_at: string;
 }

@@ -6,6 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { vurl } from "@/lib/persona";
 import { apiPatch, apiPost } from "@/lib/api";
 import { formatDateTime, useVisit, useVisitMutation } from "@/lib/hooks";
 import { KIND_LABELS } from "@/lib/types";
@@ -106,7 +107,7 @@ export default function Actions() {
               )}
               {active.length > 0 && done === active.length && suggested.length === 0 && (
                 <div data-testid="all-done-card" className="rounded-3xl bg-eucalypt-soft border border-eucalypt/20 p-6 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-eucalypt font-heading text-xl">All follow-up actions complete. Nice work, Alex.</p>
+                  <p className="text-eucalypt font-heading text-xl">All follow-up actions complete. Nice work, {v.patient.name.split(" ")[0]}.</p>
                   <Link to="/journey" data-testid="actions-journey-link" className={cn(buttonVariants(), "rounded-full")}>See full journey</Link>
                 </div>
               )}
@@ -129,7 +130,7 @@ function SourceQuote({ task }: { task: Task }) {
 
 function SuggestedTasks({ tasks }: { tasks: Task[] }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(tasks.map((t) => t.id)));
-  const confirm = useVisitMutation((b: ConfirmTasksRequest) => apiPost<Visit>("/visit/tasks/confirm", b), "Tasks added to your checklist");
+  const confirm = useVisitMutation((b: ConfirmTasksRequest) => apiPost<Visit>(vurl("/visit/tasks/confirm"), b), "Tasks added to your checklist");
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => {
       const n = new Set(s);
@@ -185,7 +186,7 @@ function SuggestedTasks({ tasks }: { tasks: Task[] }) {
 }
 
 function TaskCard({ task }: { task: Task }) {
-  const update = useVisitMutation((b: TaskStatusUpdate) => apiPatch<Visit>(`/visit/tasks/${task.id}`, b));
+  const update = useVisitMutation((b: TaskStatusUpdate) => apiPatch<Visit>(vurl(`/visit/tasks/${task.id}`), b));
   const busy = update.isPending;
   return (
     <div data-testid={`task-card-${task.id}`} data-status={task.status} className="rounded-2xl bg-white border border-line p-3 shadow-[0_8px_20px_-16px_rgba(23,46,39,0.5)] animate-fade-up">

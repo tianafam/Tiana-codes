@@ -1,13 +1,15 @@
-"""VisitReady journey endpoints. One fictional visit (Alex) links every stage (BR-08)."""
+"""VisitReady journey endpoints. Each fictional persona has one visit linking every stage (BR-08)."""
 
 import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 
 from lib import demo_data as D
 from lib.ai import generate_json
+from lib.brief_pdf import render_brief_pdf
 from lib.db import db
 from models.visit import (
     ApproveRequest,
@@ -17,13 +19,14 @@ from models.visit import (
     BriefPoint,
     BriefUpdate,
     Clinic,
+    ClinicalNotes,
     ConfirmTasksRequest,
     ConsultUpdate,
     GenerateBriefRequest,
     GenerateNotesRequest,
-    ClinicalNotes,
     Instruction,
     PathwaySuggestion,
+    Persona,
     PrepForm,
     Questionnaire,
     Service,
@@ -40,14 +43,18 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def fresh_visit() -> dict:
-    return Visit(id=D.VISIT_ID, patient=D.PATIENT, updated_at=now()).model_dump()
+def persona_cfg(persona: str) -> dict:
+    cfg = D.PERSONAS.get(persona)
+    if not cfg:
+        raise HTTPException(404, "Unknown demo persona")
+    return cfg
 
 
-async def load() -> Visit:
-    doc = await db.visits.find_one({"id": D.VISIT_ID}, {"_id": 0})
+async def load(persona: str) -> Visit:
+    cfg = persona_cfg(persona)
+    doc = await db.visits.find_one({"id": cfg["visit_id"]}, {"_id": 0})
     if not doc:
-        doc = fresh_visit()
+        doc = Visit(id=cfg["visit_id"], persona=persona, patient=cfg["patient"], updated_at=now()).model_dump()
         await db.visits.insert_one({**doc})
     return Visit(**doc)
 
@@ -56,6 +63,9 @@ async def save(v: Visit) -> Visit:
     v.updated_at = now()
     await db.visits.replace_one({"id": v.id}, v.model_dump(), upsert=True)
     return v
+
+
+PersonaQ = Query("alex", description="Demo persona id")
 
 
 # ---------- reference data ----------
@@ -69,34 +79,40 @@ async def list_clinics():
     return D.clinics()
 
 
+@router.get("/personas", response_model=list[Persona])
+async def list_personas():
+    return [{**p, "demo_prep": {**p["demo_prep"]}} for p in D.PERSONAS.values()]
+
+
 @router.get("/demo/transcript", response_model=Transcript)
-async def sample_transcript():
-    return Transcript(title=D.SAMPLE_TRANSCRIPT_TITLE, text=D.SAMPLE_TRANSCRIPT)
+async def sample_transcript(persona: str = PersonaQ):
+    cfg = persona_cfg(persona)
+    return Transcript(title=cfg["transcript_title"], text=cfg["transcript"])
 
 
 # ---------- visit ----------
 @router.get("/visit", response_model=Visit)
-async def get_visit():
-    return await load()
+async def get_visit(persona: str = PersonaQ):
+    return await load(persona)
 
 
 @router.post("/visit/reset", response_model=Visit)
-async def reset_visit():
-    await db.visits.delete_many({"id": D.VISIT_ID})
-    return await load()
+async def reset_visit(persona: str = PersonaQ):
+    await db.visits.delete_many({"id": persona_cfg(persona)["visit_id"]})
+    return await load(persona)
 
 
 # Feature 1 — navigation & booking
 @router.post("/visit/questionnaire", response_model=Visit)
-async def submit_questionnaire(body: Questionnaire):
-    v = await load()
+async def submit_questionnaire(body: Questionnaire, persona: str = PersonaQ):
+    v = await load(persona)
     v.questionnaire = body
     v.pathway = PathwaySuggestion(**D.suggest_pathway(body.model_dump()))
     return await save(v)
 
 
 @router.post("/visit/booking", response_model=Visit)
-async def book(body: BookingRequest):
+async def book(body: BookingRequest, persona: str = PersonaQ):
     clinic = next((c for c in D.clinics() if c["id"] == body.clinic_id), None)
     if not clinic:
         raise HTTPException(404, "Clinic not found")
@@ -105,7 +121,7 @@ async def book(body: BookingRequest):
         raise HTTPException(404, "That time is no longer available")
     prac = next(p for p in clinic["practitioners"] if p["id"] == slot["practitioner_id"])
     service = next((s for s in D.SERVICES if s["id"] == body.service_id), D.SERVICES[0])
-    v = await load()
+    v = await load(persona)
     v.booking = Booking(
         reference=f"VR-{uuid.uuid4().hex[:6].upper()}",
         clinic_id=clinic["id"], clinic_name=clinic["name"], clinic_address=clinic["address"],
@@ -118,8 +134,8 @@ async def book(body: BookingRequest):
 
 # Feature 2 — preparation
 @router.put("/visit/prep", response_model=Visit)
-async def save_prep(body: PrepForm):
-    v = await load()
+async def save_prep(body: PrepForm, persona: str = PersonaQ):
+    v = await load(persona)
     v.prep = body
     return await save(v)
 
@@ -148,8 +164,8 @@ BRIEF_SYSTEM = (
 
 
 @router.post("/visit/brief/generate", response_model=Visit)
-async def generate_brief(body: GenerateBriefRequest):
-    v = await load()
+async def generate_brief(body: GenerateBriefRequest, persona: str = PersonaQ):
+    v = await load(persona)
     if not v.booking:
         raise HTTPException(409, "Book an appointment before preparing a brief")
     prep = body.prep
@@ -184,8 +200,8 @@ async def generate_brief(body: GenerateBriefRequest):
 
 
 @router.put("/visit/brief", response_model=Visit)
-async def update_brief(body: BriefUpdate):
-    v = await load()
+async def update_brief(body: BriefUpdate, persona: str = PersonaQ):
+    v = await load(persona)
     if not v.brief:
         raise HTTPException(409, "Generate a brief first")
     edits = {e.id: e.text for e in body.points}
@@ -199,6 +215,19 @@ async def update_brief(body: BriefUpdate):
     return await save(v)
 
 
+@router.get("/visit/brief/pdf")
+async def brief_pdf(persona: str = PersonaQ):
+    v = await load(persona)
+    if not v.brief:
+        raise HTTPException(404, "No brief has been generated yet")
+    pdf = render_brief_pdf(v)
+    first = v.patient.name.split()[0].lower()
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="visitready-brief-{first}.pdf"'},
+    )
+
+
 # Feature 3 — clinical notes
 NOTES_SYSTEM = (
     "You are a clinical documentation assistant drafting notes for a GP to review. Use only information in the transcript. "
@@ -208,8 +237,9 @@ NOTES_SYSTEM = (
 
 
 @router.post("/visit/consult/generate", response_model=Visit)
-async def generate_notes(body: GenerateNotesRequest):
-    v = await load()
+async def generate_notes(body: GenerateNotesRequest, persona: str = PersonaQ):
+    cfg = persona_cfg(persona)
+    v = await load(persona)
     if not v.booking:
         raise HTTPException(409, "No appointment booked for this patient yet")
     if v.consult.status == "approved":
@@ -234,11 +264,14 @@ async def generate_notes(body: GenerateNotesRequest):
             notes, instructions = None, None
     ai_source = "live" if notes and instructions else "fallback"
     if ai_source == "fallback":
-        notes, instructions = D.FALLBACK_NOTES, D.FALLBACK_INSTRUCTIONS
+        notes, instructions = cfg["fallback_notes"], cfg["fallback_instructions"]
 
+    ins = [Instruction(id=f"ins-{i+1}", kind=x["kind"], text=str(x["text"])) for i, x in enumerate(instructions)]
     v.consult.transcript = body.transcript
     v.consult.notes = ClinicalNotes(**notes)
-    v.consult.instructions = [Instruction(id=f"ins-{i+1}", kind=x["kind"], text=str(x["text"])) for i, x in enumerate(instructions)]
+    v.consult.instructions = ins
+    v.consult.ai_notes = ClinicalNotes(**notes)
+    v.consult.ai_instructions = [i.model_copy() for i in ins]
     v.consult.status = "draft"  # BR-04: AI output always starts as Draft
     v.consult.ai_source = ai_source
     v.consult.edited = False
@@ -247,32 +280,35 @@ async def generate_notes(body: GenerateNotesRequest):
     return await save(v)
 
 
+def _content(ins: list[Instruction]) -> list[tuple[str, str, str]]:
+    return [(i.id, i.kind, i.text) for i in ins]
+
+
 def _apply_edits(v: Visit, body: ConsultUpdate) -> None:
     if v.consult.status == "none":
         raise HTTPException(409, "Generate draft notes first")
     if v.consult.status == "approved":
         raise HTTPException(409, "Approved notes are locked")
-    if body.notes != v.consult.notes or body.instructions != v.consult.instructions:
-        v.consult.edited = True
     v.consult.notes = body.notes
     v.consult.instructions = body.instructions
+    v.consult.edited = body.notes != v.consult.ai_notes or _content(body.instructions) != _content(v.consult.ai_instructions)
 
 
 @router.put("/visit/consult", response_model=Visit)
-async def update_consult(body: ConsultUpdate):
-    v = await load()
+async def update_consult(body: ConsultUpdate, persona: str = PersonaQ):
+    v = await load(persona)
     _apply_edits(v, body)
     return await save(v)
 
 
 @router.post("/visit/consult/approve", response_model=Visit)
-async def approve_consult(body: ApproveRequest):
-    v = await load()
-    if not body.reviewed:
-        raise HTTPException(422, "Confirm you have reviewed the notes before approving")
+async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
+    v = await load(persona)
     _apply_edits(v, body)
     if not v.consult.instructions:
         raise HTTPException(422, "Add at least one patient-facing instruction")
+    if not all(i.approved for i in v.consult.instructions):
+        raise HTTPException(422, "Approve every follow-up item before releasing to the patient")
     v.consult.status = "approved"
     v.consult.approved_at = now()
     v.consult.approved_by = v.booking.practitioner_name if v.booking else "Clinician"
@@ -287,8 +323,8 @@ async def approve_consult(body: ApproveRequest):
 
 # Feature 4 — follow-up tracker
 @router.post("/visit/tasks/confirm", response_model=Visit)
-async def confirm_tasks(body: ConfirmTasksRequest):
-    v = await load()
+async def confirm_tasks(body: ConfirmTasksRequest, persona: str = PersonaQ):
+    v = await load(persona)
     if v.consult.status != "approved":
         raise HTTPException(409, "Follow-up tasks are released only after clinician approval")
     ids = set(body.task_ids)
@@ -300,8 +336,8 @@ async def confirm_tasks(body: ConfirmTasksRequest):
 
 
 @router.patch("/visit/tasks/{task_id}", response_model=Visit)
-async def update_task(task_id: str, body: TaskStatusUpdate):
-    v = await load()
+async def update_task(task_id: str, body: TaskStatusUpdate, persona: str = PersonaQ):
+    v = await load(persona)
     task = next((t for t in v.tasks if t.id == task_id), None)
     if not task:
         raise HTTPException(404, "Task not found")

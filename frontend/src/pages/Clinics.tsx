@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { vurl } from "@/lib/persona";
 import { apiPost } from "@/lib/api";
 import { useClinics, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
 import type { BookingRequest, Clinic, Visit } from "@/lib/types";
@@ -26,7 +27,7 @@ export default function Clinics() {
   const [day, setDay] = useState<string | null>(null);
   const [slotId, setSlotId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const book = useVisitMutation((b: BookingRequest) => apiPost<Visit>("/visit/booking", b));
+  const book = useVisitMutation((b: BookingRequest) => apiPost<Visit>(vurl("/visit/booking"), b));
 
   const serviceNames = useMemo(() => Object.fromEntries((services.data ?? []).map((s) => [s.id, s.name])), [services.data]);
 

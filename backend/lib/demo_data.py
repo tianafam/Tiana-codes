@@ -217,3 +217,93 @@ PREP_FIELD_LABELS = {
     "concerns": "Worries",
     "questions": "Questions",
 }
+
+
+# ---------- Second persona: Priya (skin check pathway) ----------
+PRIYA_TRANSCRIPT_TITLE = "Fictional consult \u2014 Dr Marcus Vance & Priya Sharma (5 min)"
+PRIYA_TRANSCRIPT = """Dr Vance: Hi Priya, thanks for sharing your notes ahead of today. You mentioned a mole on your back?
+Priya: Yes, on my upper back. My partner noticed it looks darker than it used to, and the edge seems more uneven. Maybe over the last two or three months.
+Dr Vance: Any itching, bleeding or crusting?
+Priya: It itched a little last week. No bleeding.
+Dr Vance: Any family history of melanoma or skin cancer?
+Priya: My dad had a melanoma removed about ten years ago.
+Dr Vance: Thanks, that's important. And sun exposure growing up?
+Priya: Lots of beach summers in Queensland, a few bad sunburns as a teenager.
+Dr Vance: Let me take a look with the dermatoscope. ... It's about 7 millimetres, with some asymmetry and an irregular border, and two shades of brown. The rest of your skin check looks fine today.
+Priya: Should I be worried?
+Dr Vance: Most changing moles turn out to be harmless, but given the changes and your family history, I'd like to remove it so it can be looked at under a microscope. That's the safest way to know for sure.
+Priya: OK. How does that work?
+Dr Vance: Please book a 30-minute procedure appointment with me next week for an excision biopsy. It's done here under local anaesthetic.
+Dr Vance: After the procedure, apply mupirocin 2% ointment to the wound twice a day for five days, and keep the dressing dry for 48 hours.
+Dr Vance: The results usually take about a week. We'll call you, and please book a results appointment for ten days after the procedure.
+Dr Vance: In the meantime, use SPF 50+ sunscreen daily and keep up a yearly full skin check.
+Dr Vance: If the mole bleeds, grows quickly, or you notice any new changing spots before then, book in sooner.
+Priya: Thank you, that's really clear."""
+
+PRIYA_FALLBACK_NOTES = {
+    "subjective": "41yo presenting with changing pigmented lesion upper back, noticed by partner over 2\u20133 months: darker, more irregular edge. Mild itch last week. No bleeding. FHx: father melanoma (~10 yrs ago). Significant childhood sun exposure (QLD), several blistering sunburns as teen.",
+    "objective": "Dermatoscopy: 7mm pigmented lesion upper back with asymmetry, irregular border, two shades of brown. Remainder of full skin check unremarkable.",
+    "assessment": "Changing atypical naevus \u2014 melanoma not excluded given ABCD features and positive family history.",
+    "plan": "Excision biopsy under LA next week (30 min procedure appt). Histology. Post-procedure wound care. Results appt 10 days post-procedure. Sun protection, annual skin check. Safety-netting re: bleeding/rapid growth/new lesions.",
+}
+
+PRIYA_FALLBACK_INSTRUCTIONS = [
+    {"kind": "appointment", "text": "Book a 30-minute procedure appointment with Dr Vance next week for an excision biopsy of the mole on your upper back."},
+    {"kind": "medication", "text": "After the procedure, apply mupirocin 2% ointment to the wound twice a day for five days, and keep the dressing dry for 48 hours."},
+    {"kind": "test", "text": "Book a results appointment for ten days after the procedure to go over the biopsy results."},
+    {"kind": "self_care", "text": "Use SPF 50+ sunscreen daily and keep up a yearly full skin check."},
+    {"kind": "self_care", "text": "If the mole bleeds, grows quickly, or you notice any new changing spots, book in sooner."},
+]
+
+PERSONAS: dict[str, dict] = {
+    "alex": {
+        "id": "alex",
+        "visit_id": VISIT_ID,
+        "initials": "AT",
+        "patient": PATIENT,
+        "tagline": "Dry cough for three weeks \u2192 GP pathway",
+        "quote": "I've had a dry cough for three weeks since a cold. I don't know if I need a GP, a specialist, or just to wait it out.",
+        "demo_questionnaire": {
+            "main_concern": "Dry cough that started after a cold and won't go away. Worse at night.",
+            "duration": "more than 3 weeks", "consulted_before": "no", "referral": "",
+            "location": "Carlton VIC 3053", "preference": "in_person", "consent_reuse": True,
+        },
+        "demo_prep": {
+            "symptoms": "Dry, tickly cough, worst at night and keeping me awake. A little wheezy when I go for a run. No fever now.",
+            "previous_care": "Haven't seen a doctor yet. Tried honey and lemon and throat lozenges, which help a bit.",
+            "history": "Mild asthma as a child, haven't used a puffer in years. I don't smoke or vape.",
+            "medications": "Throat lozenges from the pharmacy",
+            "concerns": "I'm worried it might be something serious because it isn't going away.",
+            "questions": "Could this be my asthma coming back?\nDo I need a chest X-ray?\nWhat can I do to sleep better tonight?",
+        },
+        "transcript_title": SAMPLE_TRANSCRIPT_TITLE,
+        "transcript": SAMPLE_TRANSCRIPT,
+        "fallback_notes": FALLBACK_NOTES,
+        "fallback_instructions": FALLBACK_INSTRUCTIONS,
+    },
+    "priya": {
+        "id": "priya",
+        "visit_id": "visit-priya-001",
+        "initials": "PS",
+        "patient": {"name": "Priya Sharma", "age": 41, "pronouns": "she/her", "suburb": "Brunswick VIC 3056"},
+        "tagline": "A mole that has changed \u2192 Skin Check pathway",
+        "quote": "My partner says the mole on my back looks darker than it used to. It's probably nothing, but I'm not sure who to see.",
+        "demo_questionnaire": {
+            "main_concern": "A mole on my upper back seems darker and its edge looks more uneven over the last few months.",
+            "duration": "several months", "consulted_before": "no", "referral": "",
+            "location": "Brunswick VIC 3056", "preference": "in_person", "consent_reuse": True,
+        },
+        "demo_prep": {
+            "symptoms": "Mole on upper back looks darker with an uneven edge. Itched a little last week. No bleeding.",
+            "previous_care": "Haven't had it checked yet. Last full skin check was about five years ago.",
+            "history": "My dad had a melanoma removed about ten years ago. Lots of sunburns as a teenager in Queensland.",
+            "medications": "None",
+            "concerns": "Worried because of my dad's melanoma.",
+            "questions": "Does this mole need to be removed?\nHow often should I have skin checks?\nWhat should I watch for at home?",
+        },
+        "transcript_title": PRIYA_TRANSCRIPT_TITLE,
+        "transcript": PRIYA_TRANSCRIPT,
+        "fallback_notes": PRIYA_FALLBACK_NOTES,
+        "fallback_instructions": PRIYA_FALLBACK_INSTRUCTIONS,
+    },
+}

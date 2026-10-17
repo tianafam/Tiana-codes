@@ -4,7 +4,7 @@ import { ArrowRight, Compass, Search, Sparkles, ClipboardCheck, Stethoscope, Lis
 import AppShell from "@/components/AppShell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useServices, useVisit } from "@/lib/hooks";
+import { useCurrentPersona, useServices, useVisit } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const HERO_IMG =
@@ -23,6 +23,8 @@ export default function Home() {
   const services = useServices();
   const visit = useVisit();
   const started = !!visit.data?.questionnaire || !!visit.data?.booking;
+  const persona = useCurrentPersona();
+  const firstName = persona?.patient.name.split(" ")[0] ?? "Alex";
 
   const search = () => navigate(`/clinics${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
 
@@ -46,14 +48,14 @@ export default function Home() {
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(17,38,32,0.85)_0%,rgba(20,48,40,0.35)_100%)]" />
               <div data-testid="persona-card" className="absolute left-4 bottom-4 right-4 sm:right-auto sm:max-w-sm rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 text-white">
                 <div className="flex items-center gap-3">
-                  <span className="size-10 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center font-semibold">AT</span>
+                  <span className="size-10 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center font-semibold">{persona?.initials ?? "AT"}</span>
                   <div>
-                    <p className="font-heading text-lg leading-tight">Meet Alex, 32</p>
-                    <p className="text-xs text-[#D1E7DF]">Fictional demo patient · Carlton VIC</p>
+                    <p data-testid="persona-card-name" className="font-heading text-lg leading-tight">Meet {firstName}, {persona?.patient.age ?? 32}</p>
+                    <p className="text-xs text-[#D1E7DF]">Fictional demo patient · {persona?.patient.suburb ?? "Carlton VIC 3053"}</p>
                   </div>
                 </div>
                 <p className="mt-3 text-sm text-[#D1E7DF] leading-relaxed">
-                  “I've had a dry cough for three weeks since a cold. I don't know if I need a GP, a specialist, or just to wait it out.”
+                  “{persona?.quote ?? "I've had a dry cough for three weeks since a cold. I don't know if I need a GP, a specialist, or just to wait it out."}”
                 </p>
               </div>
             </div>
@@ -127,7 +129,7 @@ export default function Home() {
                 data-testid="home-continue-journey-link"
                 className={cn(buttonVariants({ variant: "outline" }), "h-11 rounded-full justify-between bg-white")}
               >
-                <span className="flex items-center gap-2"><Sparkles className="size-4 text-terracotta" /> Continue Alex's journey</span>
+                <span className="flex items-center gap-2"><Sparkles className="size-4 text-terracotta" /> Continue {firstName}'s journey</span>
                 <ArrowRight className="size-4" />
               </Link>
             )}

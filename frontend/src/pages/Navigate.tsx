@@ -9,18 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { vurl } from "@/lib/persona";
 import { apiPost } from "@/lib/api";
-import { useServices, useVisit, useVisitMutation } from "@/lib/hooks";
+import { useCurrentPersona, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
 import type { Preference, Questionnaire, Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const EMPTY: Questionnaire = {
   main_concern: "", duration: "", consulted_before: "no", referral: "", location: "", preference: "any", consent_reuse: false,
-};
-const ALEX: Questionnaire = {
-  main_concern: "Dry cough that started after a cold and won't go away. Worse at night.",
-  duration: "more than 3 weeks", consulted_before: "no", referral: "", location: "Carlton VIC 3053",
-  preference: "in_person", consent_reuse: true,
 };
 const CONCERN_CHIPS = ["Persistent cough", "Sore throat", "A new skin spot", "Lower back pain", "Feeling anxious lately"];
 const DURATIONS = ["less than a week", "1–3 weeks", "more than 3 weeks", "several months"];
@@ -49,10 +45,11 @@ function Option({ active, onClick, children, testid }: { active: boolean; onClic
 export default function Navigate() {
   const visit = useVisit();
   const services = useServices();
+  const persona = useCurrentPersona();
   const [form, setForm] = useState<Questionnaire>(EMPTY);
   const [step, setStep] = useState(0);
   const [editing, setEditing] = useState(false);
-  const submit = useVisitMutation((q: Questionnaire) => apiPost<Visit>("/visit/questionnaire", q), "Answers saved");
+  const submit = useVisitMutation((q: Questionnaire) => apiPost<Visit>(vurl("/visit/questionnaire"), q), "Answers saved");
 
   const pathway = visit.data?.pathway;
   const showResult = !!pathway && !editing && !visit.isError;
@@ -81,9 +78,11 @@ export default function Navigate() {
               <span data-testid="questionnaire-step-indicator" className="font-mono text-xs text-ink-muted">
                 Question {step + 1} of 4
               </span>
-              <Button variant="ghost" size="sm" data-testid="fill-alex-answers-btn" onClick={() => { setForm(ALEX); setStep(3); }}>
-                <Wand2 className="size-4" /> Fill Alex's demo answers
-              </Button>
+              {persona && (
+                <Button variant="ghost" size="sm" data-testid="fill-demo-answers-btn" onClick={() => { setForm(persona.demo_questionnaire); setStep(3); }}>
+                  <Wand2 className="size-4" /> Fill {persona.patient.name.split(" ")[0]}'s demo answers
+                </Button>
+              )}
             </div>
             <div className="mt-3 h-1 rounded-full bg-sand overflow-hidden">
               <div className="h-full bg-eucalypt transition-[width] duration-500" style={{ width: `${((step + 1) / 4) * 100}%` }} />
