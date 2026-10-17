@@ -32,10 +32,11 @@ export default function DemoGuide() {
       <button
         data-testid="demo-guide-btn"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-eucalypt-deep text-white pl-3 pr-4 py-2.5 shadow-[0_16px_40px_-12px_rgba(23,46,39,0.7)] transition-transform duration-200 hover:-translate-y-0.5"
+        aria-label="Open demo guide"
+        className="group fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full bg-eucalypt-deep/90 backdrop-blur text-white px-2.5 py-2 shadow-[0_10px_30px_-12px_rgba(23,46,39,0.7)] transition-[opacity,background-color] duration-200 opacity-80 hover:opacity-100 hover:bg-eucalypt-deep"
       >
         <ListChecks className="size-4 text-[#FCD34D]" />
-        <span className="text-sm font-semibold">Demo guide</span>
+        <span className="text-xs font-semibold max-w-0 overflow-hidden whitespace-nowrap transition-[max-width] duration-300 group-hover:max-w-24">Demo guide</span>
         <span data-testid="demo-guide-progress" className="font-mono text-xs bg-white/15 rounded-full px-2 py-0.5">{doneCount}/{STEPS.length}</span>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>

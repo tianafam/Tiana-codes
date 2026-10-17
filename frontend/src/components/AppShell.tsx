@@ -47,20 +47,20 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
 
   return (
     <div className={cn("min-h-screen flex flex-col", clinician ? "bg-[#F5F7F6]" : "bg-cream")}>
-      <div data-testid="demo-boundary-strip" className="bg-eucalypt-deep text-[#D1E7DF] text-xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
+      <div data-testid="demo-boundary-strip" className="bg-sand border-b border-line text-ink-muted text-[11px]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-1 flex flex-wrap items-center justify-between gap-2">
           <span>
-            <span className="font-semibold text-[#FCD34D] tracking-[0.15em] uppercase mr-2">Demo</span>
+            <span className="font-semibold text-terracotta tracking-[0.15em] uppercase mr-2">Demo</span>
             Simulated journey with fictional patients, clinics and clinicians. Not a real healthcare service.
           </span>
           <span className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <Phone className="size-3.5" /> In an emergency call <strong className="text-white">000</strong>
+              <Phone className="size-3.5" /> In an emergency call <strong className="text-ink">000</strong>
             </span>
             <button
               data-testid={clinician ? "demo-switch-to-patient" : "demo-switch-to-clinician"}
               onClick={() => navigate(clinician ? "/patient/journey" : clinicianHome())}
-              className="inline-flex items-center gap-1 rounded-full border border-white/20 px-2.5 py-0.5 text-[11px] text-white hover:bg-white/10 transition-colors duration-200"
+              className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-0.5 text-[11px] text-ink hover:border-eucalypt/50 transition-colors duration-200"
             >
               {clinician ? <User className="size-3" /> : <Stethoscope className="size-3" />} Demo: switch to {clinician ? "Patient" : "Clinician"}
             </button>

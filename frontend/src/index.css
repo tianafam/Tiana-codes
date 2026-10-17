@@ -19,7 +19,7 @@
     --color-cream: #FBF9F5;
     --color-sand: #F4EFE6;
     --color-ink: #1C2421;
-    --color-ink-muted: #52605B;
+    --color-ink-muted: #44524D;
     --color-line: #E3DED4;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -89,7 +89,7 @@
     --secondary: #F4EFE6;
     --secondary-foreground: #1C2421;
     --muted: #F4EFE6;
-    --muted-foreground: #52605B;
+    --muted-foreground: #44524D;
     --accent: #E8F3EE;
     --accent-foreground: #0D5C4D;
     --destructive: #B91C1C;
