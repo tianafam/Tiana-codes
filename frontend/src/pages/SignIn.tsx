@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Stethoscope } from "lucide-react";
+import { ArrowLeft, ArrowRight, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 import AppShell from "@/components/AppShell";
 import { errorMessage, usePersonas, visitKey } from "@/lib/hooks";
@@ -52,6 +52,14 @@ export default function SignIn() {
   return (
     <AppShell>
       <section className="mx-auto max-w-3xl px-4 sm:px-6 pt-10 sm:pt-14 animate-fade-up">
+        <button
+          type="button"
+          data-testid="sign-in-back-btn"
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/patient"))}
+          className="group mb-6 inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink hover:border-eucalypt/50 hover:text-eucalypt transition-colors duration-200"
+        >
+          <ArrowLeft className="size-4 transition-transform duration-200 group-hover:-translate-x-0.5" /> Back
+        </button>
         <p className="tracking-[0.15em] uppercase text-[11px] font-semibold text-terracotta">{signup ? "Sign up · Demo" : "Sign in · Demo"}</p>
         <h1 data-testid="sign-in-title" className="mt-2 text-[32px] sm:text-[40px] leading-tight tracking-tight text-ink">Who's starting the journey?</h1>
         <p className="mt-2 text-[15px] text-ink-muted max-w-xl">
