@@ -1,6 +1,7 @@
 """Fictional reference data for the VisitReady demo. Nothing here is real."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from lib.dates import today_iso
 
@@ -87,21 +88,36 @@ _CLINICS = [
     },
 ]
 
-_TIMES = ["08:45", "10:15", "13:30", "16:00"]
+_TIMES = ["08:45", "10:15", "13:30", "16:00", "17:30"]
+TZ = "Australia/Melbourne"  # fictional clinics are in Melbourne
+
+CLINICIAN = {"id": "dr-lin", "name": "Dr Sarah Lin", "role": "General Practitioner", "clinic": "Carlton Family Medical"}
+
+
+def _today_times(now: datetime) -> list[str]:
+    """Remaining standard times today, plus two near-term demo slots so a same-day booking is always possible."""
+    current = now.strftime("%H:%M")
+    times = {t for t in _TIMES if t > current}
+    base = now.replace(second=0, microsecond=0) + timedelta(minutes=30 - now.minute % 30)
+    for k in range(2):
+        t = base + timedelta(minutes=30 * k)
+        if t.date() == now.date():
+            times.add(t.strftime("%H:%M"))
+    return sorted(times)
 
 
 def clinics() -> list[dict]:
-    """Clinics with slots for the next three days, anchored on the server's today."""
-    start = date.fromisoformat(today_iso()) + timedelta(days=1)
+    """Clinics with slots for today (remaining times) and the next two days, anchored on Melbourne time."""
+    now = datetime.now(ZoneInfo(TZ))
+    start = date.fromisoformat(today_iso(TZ))
     out = []
     for c in _CLINICS:
         slots = []
         for d in range(3):
             day = (start + timedelta(days=d)).isoformat()
             for pi, p in enumerate(c["practitioners"]):
-                for ti, t in enumerate(_TIMES):
-                    if (ti + pi + d) % 3 == 2:  # leave gaps so the calendar looks realistic
-                        continue
+                times = _today_times(now) if d == 0 else [t for ti, t in enumerate(_TIMES) if (ti + pi + d) % 3 != 2]
+                for t in times:
                     mode = "telehealth" if c["id"] == "melbourne-telehealth" else "in_person"
                     slots.append({"id": f"{c['id']}_{p['id']}_{day}_{t}", "practitioner_id": p["id"], "date": day, "time": t, "mode": mode})
         out.append({**c, "slots": slots})

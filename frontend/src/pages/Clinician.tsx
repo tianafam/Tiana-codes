@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { BadgeCheck, CalendarClock, CheckCheck, FileAudio, GitCompareArrows, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, User } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarClock, CheckCheck, FileAudio, GitCompareArrows, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, User } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import BeforeAfter, { countChanges } from "@/components/BeforeAfter";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { vurl } from "@/lib/persona";
+import { setPersona, usePersonaId, vurl } from "@/lib/persona";
+import { useClinicianSignedIn } from "@/lib/clinicianSession";
 import { apiPost, apiPut } from "@/lib/api";
 import { formatDateTime, useTranscript, useVisit, useVisitMutation } from "@/lib/hooks";
 import { KIND_LABELS } from "@/lib/types";
@@ -48,8 +49,13 @@ function TranscriptView({ text }: { text: string }) {
 }
 
 export default function Clinician() {
+  const { persona: routePersona = "alex" } = useParams();
+  const personaId = usePersonaId();
+  const signedIn = useClinicianSignedIn();
+  // The URL decides which patient's visit is open; keep the shared persona store in step with it.
+  useEffect(() => { if (routePersona !== personaId) setPersona(routePersona); }, [routePersona, personaId]);
   const visit = useVisit();
-  const v = visit.data;
+  const v = routePersona === personaId ? visit.data : undefined;
   const transcriptQ = useTranscript();
   const [draftText, setDraftText] = useState<{ visitId: string; text: string } | null>(null);
   const [editingTranscript, setEditingTranscript] = useState(false);
@@ -62,14 +68,18 @@ export default function Clinician() {
   const stepIndex = status === "none" ? 0 : status === "draft" ? 1 : 3;
   const briefShared = v?.brief?.shared && v.brief.status === "saved";
   const canGenerate = text.trim().length >= 20 && !generate.isPending && status !== "approved" && !!v?.booking;
+  if (!signedIn) return <Navigate to="/clinician" replace />;
 
   return (
     <AppShell mode="clinician">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-8 animate-fade-up">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="tracking-[0.15em] uppercase text-xs font-semibold text-terracotta">Clinician workspace · Simulated</p>
-            <h1 className="mt-2 text-3xl sm:text-[42px] leading-tight tracking-tight text-ink">Consultation documentation</h1>
+            <Link to="/clinician/dashboard" data-testid="back-to-dashboard-link" className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-eucalypt transition-colors duration-200">
+              <ArrowLeft className="size-4" /> Today's appointments
+            </Link>
+            <p className="mt-3 tracking-[0.15em] uppercase text-xs font-semibold text-terracotta">Consultation workspace · Simulated</p>
+            <h1 data-testid="consult-heading" className="mt-2 text-3xl sm:text-[42px] leading-tight tracking-tight text-ink">{v ? `Consultation · ${v.patient.name}` : "Consultation"}</h1>
             <p className="mt-2 text-ink-muted max-w-2xl">AI drafts notes from the transcript. They stay in Draft until you review, approve each follow-up item and release them — nothing reaches the patient before then.</p>
           </div>
           <ol data-testid="clinician-workflow-stepper" className="flex items-center gap-2">
@@ -374,11 +384,41 @@ function NotesEditor({ consult }: { consult: Consult }) {
       )}
 
       {approved ? (
-        <div data-testid="approved-panel" className="rounded-3xl bg-eucalypt-deep text-white p-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[#D1E7DF]">Notes are locked. {instructions.length} approved items released to the patient as suggested tasks.</p>
-          <Link to="/actions" data-testid="clinician-view-patient-actions-link" className={cn(buttonVariants({ variant: "secondary" }), "rounded-full")}>
-            Switch to patient view
-          </Link>
+        <div data-testid="approved-panel" className="rounded-3xl bg-eucalypt-deep text-white p-6 relative overflow-hidden animate-fade-up">
+          <div className="absolute -right-10 -top-10 size-40 rounded-full bg-eucalypt/60 blur-2xl" aria-hidden />
+          <div className="relative">
+            <div className="flex items-center gap-3">
+              <span className="size-11 rounded-full bg-[#6EE7B7] text-eucalypt-deep grid place-items-center"><BadgeCheck className="size-6" /></span>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.15em] text-[#ADC5BE]">Approval confirmation</p>
+                <p className="font-heading text-2xl">Approved &amp; Released</p>
+              </div>
+            </div>
+            <dl className="mt-5 grid sm:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-[#ADC5BE]">Status</dt>
+                <dd data-testid="confirm-status" className="mt-1 font-semibold">Approved &amp; Released</dd>
+              </div>
+              <div className="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-[#ADC5BE]">Approved by</dt>
+                <dd data-testid="confirm-approved-by" className="mt-1 font-semibold">{consult.approved_by}</dd>
+                <dd className="text-xs text-[#ADC5BE]">{consult.approved_at && formatDateTime(consult.approved_at)}</dd>
+              </div>
+              <div className="rounded-2xl bg-white/10 border border-white/10 p-3">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-[#ADC5BE]">Released to patient</dt>
+                <dd data-testid="confirm-released-count" className="mt-1 font-semibold">{instructions.length} patient-facing instruction{instructions.length === 1 ? "" : "s"}</dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-xs text-[#ADC5BE]">Notes are now locked. The patient sees these as suggested tasks and must confirm them before they become active.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/clinician/dashboard" data-testid="confirm-back-dashboard-link" className={cn(buttonVariants({ variant: "secondary" }), "rounded-full")}>
+                Back to today's appointments
+              </Link>
+              <Link to="/actions" data-testid="clinician-view-patient-actions-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white")}>
+                Switch to patient view
+              </Link>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="rounded-3xl bg-white border border-line p-5 flex flex-wrap items-center justify-between gap-3">

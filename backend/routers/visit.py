@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from lib import demo_data as D
 from lib.ai import generate_json
 from lib.brief_pdf import render_brief_pdf
+from lib.dates import today_iso
 from lib.db import db
 from models.visit import (
     ApproveRequest,
@@ -19,6 +20,7 @@ from models.visit import (
     BriefPoint,
     BriefUpdate,
     Clinic,
+    ClinicianDashboard,
     ClinicalNotes,
     ConfirmTasksRequest,
     ConsultUpdate,
@@ -88,6 +90,23 @@ async def list_personas():
 async def sample_transcript(persona: str = PersonaQ):
     cfg = persona_cfg(persona)
     return Transcript(title=cfg["transcript_title"], text=cfg["transcript"])
+
+
+@router.get("/clinician/dashboard", response_model=ClinicianDashboard)
+async def clinician_dashboard():
+    rows = []
+    for pid, cfg in D.PERSONAS.items():
+        v = await load(pid)
+        rows.append({
+            "persona": pid, "visit_id": v.id, "patient": v.patient, "initials": cfg["initials"],
+            "concern": v.questionnaire.main_concern if v.questionnaire else None,
+            "booking": v.booking,
+            "brief_shared": bool(v.brief and v.brief.shared and v.brief.status == "saved"),  # BR-02
+            "consult_status": v.consult.status,
+            "instructions_released": len(v.consult.instructions) if v.consult.status == "approved" else 0,
+        })
+    rows.sort(key=lambda r: (r["booking"] is None, r["booking"].date if r["booking"] else "", r["booking"].time if r["booking"] else ""))
+    return {"today": today_iso(D.TZ), "clinician": D.CLINICIAN, "appointments": rows}
 
 
 # ---------- visit ----------
@@ -311,7 +330,7 @@ async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
         raise HTTPException(422, "Approve every follow-up item before releasing to the patient")
     v.consult.status = "approved"
     v.consult.approved_at = now()
-    v.consult.approved_by = v.booking.practitioner_name if v.booking else "Clinician"
+    v.consult.approved_by = D.CLINICIAN["name"]  # the signed-in demo clinician reviews every visit
     # BR-05 / BR-07: tasks derive only from approved instructions, text preserved verbatim.
     v.tasks = [
         Task(id=f"task-{i.id}", title=D.TASK_TITLES[i.kind], kind=i.kind, source_instruction_id=i.id,

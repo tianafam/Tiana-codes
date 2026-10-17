@@ -39,6 +39,7 @@ export function useVisitMutation<B>(fn: (body: B) => Promise<Visit>, successMess
     mutationFn: fn,
     onSuccess: (v) => {
       qc.setQueryData(visitKey(v.persona), v);
+      qc.invalidateQueries({ queryKey: ["clinician-dashboard"] });
       if (successMessage) toast.success(successMessage);
     },
     onError: (e) => toast.error(errorMessage(e)),

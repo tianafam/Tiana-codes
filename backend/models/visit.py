@@ -232,3 +232,29 @@ class Visit(BaseModel):
     consult: Consult = Consult()
     tasks: list[Task] = []
     updated_at: str
+
+
+# ---------- Clinician portal ----------
+class ClinicianProfile(BaseModel):
+    id: str
+    name: str
+    role: str
+    clinic: str
+
+
+class ClinicianAppointment(BaseModel):
+    persona: str
+    visit_id: str
+    patient: Patient
+    initials: str
+    concern: Optional[str] = None
+    booking: Optional[Booking] = None
+    brief_shared: bool
+    consult_status: Literal["none", "draft", "approved"]
+    instructions_released: int
+
+
+class ClinicianDashboard(BaseModel):
+    today: str
+    clinician: ClinicianProfile
+    appointments: list[ClinicianAppointment]

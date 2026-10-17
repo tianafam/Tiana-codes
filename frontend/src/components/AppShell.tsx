@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
+import { Check, ChevronDown, LogOut, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
 import DemoGuide from "@/components/DemoGuide";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { setPersona, usePersonaId } from "@/lib/persona";
+import { clinicianHome, setClinicianSignedIn, useClinicianSignedIn } from "@/lib/clinicianSession";
 import { useCurrentPersona, usePersonas } from "@/lib/hooks";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
   const reset = useVisitMutation(() => apiPost<Visit>(vurl("/visit/reset")));
   const clinician = mode === "clinician";
   const personaId = usePersonaId();
+  const clinicianSignedIn = useClinicianSignedIn();
   const personas = usePersonas();
   const persona = useCurrentPersona();
 
@@ -85,12 +87,37 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             </nav>
           )}
           {clinician && (
-            <span className="ml-3 hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#FEF3C7] text-[#92400E] px-3 py-1 text-xs font-semibold">
-              <Stethoscope className="size-3.5" /> Clinician Demo Mode
-            </span>
+            <div className="ml-3 flex items-center gap-2">
+              <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#FEF3C7] text-[#92400E] px-3 py-1 text-xs font-semibold">
+                <Stethoscope className="size-3.5" /> Clinician Demo Mode
+              </span>
+              {clinicianSignedIn && (
+                <NavLink
+                  to="/clinician/dashboard"
+                  data-testid="nav-clinician-dashboard-link"
+                  className={({ isActive }) =>
+                    cn("hidden md:inline px-3 py-1.5 rounded-full text-sm transition-colors duration-200", isActive ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand")
+                  }
+                >
+                  Today's appointments
+                </NavLink>
+              )}
+            </div>
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            {clinician && clinicianSignedIn && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="clinician-sign-out-btn"
+                className="text-ink-muted"
+                onClick={() => { setClinicianSignedIn(false); navigate("/clinician"); }}
+              >
+                <LogOut className="size-4" /> <span className="hidden lg:inline">Sign out</span>
+              </Button>
+            )}
+            {!clinician && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 data-testid="persona-switcher-btn"
@@ -111,7 +138,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                         if (p.id === personaId) return;
                         setPersona(p.id);
                         toast.success(`Now demoing ${p.patient.name}`);
-                        navigate(clinician ? "/clinician" : "/");
+                        navigate("/");
                       }}
                       className="items-start gap-3 py-2"
                     >
@@ -126,6 +153,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
             <div role="tablist" aria-label="Demo role" className="flex rounded-full bg-sand p-1 border border-line">
               <button
                 role="tab"
@@ -143,7 +171,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 role="tab"
                 aria-selected={clinician}
                 data-testid="role-toggle-clinician"
-                onClick={() => navigate("/clinician")}
+                onClick={() => navigate(clinicianHome())}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs sm:text-sm transition-[background-color,color,box-shadow] duration-200",
                   clinician ? "bg-eucalypt text-white shadow-sm font-semibold" : "text-ink-muted hover:text-ink",

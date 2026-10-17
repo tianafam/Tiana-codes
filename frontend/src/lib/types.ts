@@ -80,3 +80,11 @@ export const PREP_LABELS: Record<PrepField, string> = {
 export const KIND_LABELS: Record<InstructionKind, string> = {
   appointment: "Appointment", test: "Test", referral: "Referral", medication: "Medication", self_care: "Self-care",
 };
+
+// Clinician portal — mirrors ClinicianProfile / ClinicianAppointment / ClinicianDashboard
+export interface ClinicianProfile { id: string; name: string; role: string; clinic: string }
+export interface ClinicianAppointment {
+  persona: string; visit_id: string; patient: Patient; initials: string; concern: string | null;
+  booking: Booking | null; brief_shared: boolean; consult_status: "none" | "draft" | "approved"; instructions_released: number;
+}
+export interface ClinicianDashboard { today: string; clinician: ClinicianProfile; appointments: ClinicianAppointment[] }
