@@ -105,7 +105,7 @@ export default function Clinics() {
             <span className="text-eucalypt">
               <CalendarCheck className="inline size-4 mr-1" /> Booked: {booking.practitioner_name}, {booking.clinic_name} · {format(parseISO(booking.date), "EEE d MMM")} {booking.time}
             </span>
-            <Link to="/prep" data-testid="existing-booking-prep-link" className="font-semibold text-eucalypt inline-flex items-center gap-1">
+            <Link to="/patient/prep" data-testid="existing-booking-prep-link" className="font-semibold text-eucalypt inline-flex items-center gap-1">
               Prepare for this visit <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -247,7 +247,7 @@ export default function Clinics() {
           )}
           <DialogFooter>
             <Button variant="outline" data-testid="booking-dialog-close-btn" onClick={() => setConfirmOpen(false)}>Close</Button>
-            <Link to="/prep" data-testid="booking-go-prep-btn" className={buttonVariants()} onClick={() => setConfirmOpen(false)}>
+            <Link to="/patient/prep" data-testid="booking-go-prep-btn" className={buttonVariants()} onClick={() => setConfirmOpen(false)}>
               Prepare for my visit <ArrowRight className="size-4" />
             </Link>
           </DialogFooter>

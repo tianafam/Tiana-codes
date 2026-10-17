@@ -48,15 +48,25 @@ export interface Consult {
   status: "none" | "draft" | "approved"; ai_source: "live" | "fallback" | null;
   ai_notes: ClinicalNotes | null; ai_instructions: Instruction[]; edited: boolean;
   generated_at: string | null; approved_at: string | null; approved_by: string | null;
+  patient_summary: string | null; classified_by: "ai" | "rules" | null;
 }
 export interface GenerateNotesRequest { transcript: string; use_fallback: boolean }
 export interface ConsultUpdate { notes: ClinicalNotes; instructions: Instruction[] }
 export type ApproveRequest = ConsultUpdate;
 
 export type TaskStatus = "suggested" | "todo" | "in_progress" | "completed";
+export type TaskCategory = "one_time" | "daily" | "follow_up" | "urgent";
 export interface Task {
   id: string; title: string; kind: InstructionKind; source_instruction_id: string; source_text: string;
   verbatim: boolean; status: TaskStatus; confirmed_at: string | null;
+  category: TaskCategory; duration_days: number | null; due_in_days: number | null;
+  start_date: string | null; end_date: string | null; due_date: string | null; done_dates: string[];
+  classified_by: "ai" | "rules";
+}
+export interface TaskDayToggle { date: string; done: boolean }
+export interface VisitEvent { id: string; at: string; actor: "patient" | "clinician" | "ai" | "system"; actor_name: string; type: string; message: string }
+export interface AppNotification {
+  id: string; audience: "patient" | "clinician"; persona: string; title: string; body: string; link: string; created_at: string; read: boolean;
 }
 export interface ConfirmTasksRequest { task_ids: string[] }
 export interface TaskStatusUpdate { status: Exclude<TaskStatus, "suggested"> }
@@ -69,7 +79,7 @@ export interface Persona {
 export interface Visit {
   id: string; persona: string; patient: Patient; questionnaire: Questionnaire | null; pathway: PathwaySuggestion | null;
   booking: Booking | null; prep: PrepForm | null; brief: Brief | null; consult: Consult; tasks: Task[];
-  updated_at: string;
+  events: VisitEvent[]; updated_at: string; today: string;
 }
 
 export const PREP_LABELS: Record<PrepField, string> = {
@@ -88,3 +98,10 @@ export interface ClinicianAppointment {
   booking: Booking | null; brief_shared: boolean; consult_status: "none" | "draft" | "approved"; instructions_released: number;
 }
 export interface ClinicianDashboard { today: string; clinician: ClinicianProfile; appointments: ClinicianAppointment[] }
+
+export const CATEGORY_META: Record<TaskCategory, { label: string; dot: string; chip: string; border: string }> = {
+  urgent: { label: "Urgent", dot: "bg-[#DC2626]", chip: "bg-[#FEE2E2] text-[#991B1B]", border: "border-l-[#DC2626]" },
+  daily: { label: "Daily", dot: "bg-[#16A34A]", chip: "bg-[#DCFCE7] text-[#166534]", border: "border-l-[#16A34A]" },
+  follow_up: { label: "Follow-up appointment", dot: "bg-[#2563EB]", chip: "bg-[#DBEAFE] text-[#1E40AF]", border: "border-l-[#2563EB]" },
+  one_time: { label: "One-time", dot: "bg-[#D97706]", chip: "bg-[#FEF3C7] text-[#92400E]", border: "border-l-[#D97706]" },
+};

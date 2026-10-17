@@ -16,7 +16,7 @@ export default function BriefPrint() {
   return (
     <div className="min-h-screen bg-sand print:bg-white py-8 print:py-0">
       <div className="mx-auto max-w-[210mm] px-4 print:px-0 flex flex-wrap items-center justify-between gap-2 mb-4 print:hidden">
-        <Link to="/prep" data-testid="print-back-link" className={cn(buttonVariants({ variant: "ghost" }))}>
+        <Link to="/patient/prep" data-testid="print-back-link" className={cn(buttonVariants({ variant: "ghost" }))}>
           <ArrowLeft className="size-4" /> Back to preparation
         </Link>
         <div className="flex gap-2">

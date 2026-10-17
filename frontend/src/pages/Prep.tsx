@@ -71,7 +71,7 @@ export default function Prep() {
           <div data-testid="prep-no-booking" className="rounded-3xl border border-dashed border-line bg-white p-10 text-center">
             <h2 className="text-2xl text-ink">Book an appointment first</h2>
             <p className="mt-2 text-ink-muted">Your preparation brief is linked to a specific visit.</p>
-            <Link to="/navigate" data-testid="prep-find-care-link" className={cn(buttonVariants(), "mt-5 rounded-full")}>Find care <ArrowRight className="size-4" /></Link>
+            <Link to="/patient/navigate" data-testid="prep-find-care-link" className={cn(buttonVariants(), "mt-5 rounded-full")}>Find care <ArrowRight className="size-4" /></Link>
           </div>
         )}
         {v?.booking && !visit.isError && <PrepWorkspace key={v.id + (v.prep ? "-saved" : "-new")} visit={v} />}
@@ -307,13 +307,13 @@ function BriefEditor({ brief, visit, onHighlight }: { brief: Brief; visit: Visit
                 >
                   <Download className="size-4" /> PDF
                 </a>
-                <Link to="/brief/print" data-testid="print-brief-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-white")}>
+                <Link to="/patient/brief/print" data-testid="print-brief-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-white")}>
                   <Printer className="size-4" /> Print
                 </Link>
               </>
             )}
             {brief.status === "saved" && !dirty && (
-              <Link to="/journey" data-testid="brief-continue-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
+              <Link to="/patient/journey" data-testid="brief-continue-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
                 Back to journey
               </Link>
             )}

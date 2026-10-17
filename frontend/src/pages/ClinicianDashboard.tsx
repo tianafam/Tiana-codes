@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
@@ -10,6 +11,13 @@ import { useClinicianSignedIn } from "@/lib/clinicianSession";
 import { setPersona } from "@/lib/persona";
 import type { ClinicianAppointment, ClinicianDashboard as Dashboard } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+type Filter = "all" | "brief" | "awaiting";
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "All patients" },
+  { id: "brief", label: "Brief shared" },
+  { id: "awaiting", label: "Awaiting approval" },
+];
 
 const STATUS: Record<ClinicianAppointment["consult_status"], { label: string; cls: string }> = {
   none: { label: "Awaiting consult", cls: "bg-sand text-ink" },
@@ -66,11 +74,13 @@ function Row({ a, onOpen }: { a: ClinicianAppointment; onOpen: () => void }) {
 export default function ClinicianDashboard() {
   const signedIn = useClinicianSignedIn();
   const navigate = useNavigate();
-  const q = useQuery({ queryKey: ["clinician-dashboard"], queryFn: () => apiGet<Dashboard>("/clinician/dashboard"), enabled: signedIn });
+  const [filter, setFilter] = useState<Filter>("all");
+  const q = useQuery({ queryKey: ["clinician-dashboard"], queryFn: () => apiGet<Dashboard>("/clinician/dashboard"), enabled: signedIn, refetchInterval: 5000 });
   if (!signedIn) return <Navigate to="/clinician" replace />;
 
   const d = q.data;
-  const appts = d?.appointments ?? [];
+  const all = d?.appointments ?? [];
+  const appts = all.filter((a) => filter === "all" || (filter === "brief" ? a.brief_shared : a.consult_status === "draft"));
   const today = appts.filter((a) => a.booking && a.booking.date <= (d?.today ?? ""));
   const upcoming = appts.filter((a) => a.booking && a.booking.date > (d?.today ?? ""));
   const unbooked = appts.filter((a) => !a.booking);
@@ -78,8 +88,8 @@ export default function ClinicianDashboard() {
 
   const stats = [
     { id: "today", label: "Today's appointments", value: today.length },
-    { id: "briefs", label: "Briefs shared", value: appts.filter((a) => a.brief_shared).length },
-    { id: "drafts", label: "Awaiting your approval", value: appts.filter((a) => a.consult_status === "draft").length },
+    { id: "briefs", label: "Briefs shared", value: all.filter((a) => a.brief_shared).length },
+    { id: "drafts", label: "Awaiting your approval", value: all.filter((a) => a.consult_status === "draft").length },
   ];
 
   const section = (title: string, list: ClinicianAppointment[], testid: string, empty: string) => (
@@ -119,8 +129,27 @@ export default function ClinicianDashboard() {
         {q.isLoading && <div className="mt-10 space-y-3">{[0, 1].map((i) => <div key={i} className="h-28 rounded-3xl ai-shimmer" />)}</div>}
         {q.isError && <p data-testid="dashboard-error" className="mt-10 text-sm text-ink-muted">Appointments are unavailable right now.</p>}
         {d && (
+          <div data-testid="dashboard-filters" role="tablist" className="mt-8 flex flex-wrap gap-2">
+            {FILTERS.map((f) => {
+              const count = all.filter((a) => f.id === "all" || (f.id === "brief" ? a.brief_shared : a.consult_status === "draft")).length;
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={filter === f.id}
+                  data-testid={`filter-${f.id}`}
+                  onClick={() => setFilter(f.id)}
+                  className={cn("rounded-full border px-4 py-1.5 text-sm transition-[background-color,border-color,color] duration-200", filter === f.id ? "bg-eucalypt-deep text-white border-eucalypt-deep" : "bg-white border-line text-ink hover:border-eucalypt/50")}
+                >
+                  {f.label} <span className="ml-1 font-mono text-xs opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {d && (
           <>
-            {section("Today's appointments", today, "today-appointments", "No appointments booked for today yet. Book one in Patient mode — same-day slots are available.")}
+            {section("Today's appointments", today, "today-appointments", filter === "all" ? "No appointments booked for today yet. Book one in Patient mode — same-day slots are available." : "No patients match this filter today.")}
             {upcoming.length > 0 && section("Upcoming", upcoming, "upcoming-appointments", "")}
             {unbooked.length > 0 && section("Not booked yet", unbooked, "unbooked-patients", "")}
           </>

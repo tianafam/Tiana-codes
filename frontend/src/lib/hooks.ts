@@ -51,11 +51,11 @@ export interface Stage { key: string; label: string; short: string; path: string
 export function journeyStages(v?: Visit): Stage[] {
   const tasks = v?.tasks ?? [];
   return [
-    { key: "find", label: "Find care & book", short: "Find care", path: "/navigate", done: !!v?.booking },
-    { key: "prep", label: "Prepare brief", short: "Prepare", path: "/prep", done: v?.brief?.status === "saved" },
+    { key: "find", label: "Find care & book", short: "Find care", path: "/patient/navigate", done: !!v?.booking },
+    { key: "prep", label: "Prepare brief", short: "Prepare", path: "/patient/prep", done: v?.brief?.status === "saved" },
     { key: "consult", label: "Clinician notes", short: "Consult", path: "/clinician", done: v?.consult.status === "approved" },
     {
-      key: "follow", label: "Follow through", short: "Follow up", path: "/actions",
+      key: "follow", label: "Follow through", short: "Follow up", path: "/patient/follow-through",
       done: tasks.length > 0 && tasks.every((t) => t.status === "completed"),
     },
   ];

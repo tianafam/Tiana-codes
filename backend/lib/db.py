@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 INDEXES: dict[str, list[IndexModel]] = {
     "status_checks": [IndexModel([("timestamp", DESCENDING)], name="timestamp_desc")],
     "visits": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "notifications": [IndexModel([("id", ASCENDING)], name="id", unique=True), IndexModel([("audience", ASCENDING), ("persona", ASCENDING), ("created_at", DESCENDING)], name="audience_persona_created")],
 }
 
 

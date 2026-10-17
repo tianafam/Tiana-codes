@@ -26,7 +26,7 @@ export default function Home() {
   const persona = useCurrentPersona();
   const firstName = persona?.patient.name.split(" ")[0] ?? "Alex";
 
-  const search = () => navigate(`/clinics${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
+  const search = () => navigate(`/patient/clinics${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
 
   return (
     <AppShell>
@@ -91,7 +91,7 @@ export default function Home() {
                 {(services.data ?? []).slice(0, 5).map((s) => (
                   <Link
                     key={s.id}
-                    to={`/clinics?service=${s.id}`}
+                    to={`/patient/clinics?service=${s.id}`}
                     data-testid={`service-chip-${s.id}`}
                     className="rounded-full border border-line bg-cream px-3 py-1 text-xs text-ink hover:border-eucalypt hover:text-eucalypt transition-colors duration-200"
                   >
@@ -103,7 +103,7 @@ export default function Home() {
 
             <button
               data-testid="pathway-guided-btn"
-              onClick={() => navigate("/navigate")}
+              onClick={() => navigate("/patient/navigate")}
               className="group text-left rounded-3xl bg-eucalypt-deep text-white p-6 relative overflow-hidden transition-transform duration-300 hover:-translate-y-0.5 animate-fade-up [animation-delay:160ms]"
             >
               <div className="absolute -right-10 -top-10 size-40 rounded-full bg-eucalypt/60 blur-2xl" aria-hidden />
@@ -125,7 +125,7 @@ export default function Home() {
 
             {started && (
               <Link
-                to="/journey"
+                to="/patient/journey"
                 data-testid="home-continue-journey-link"
                 className={cn(buttonVariants({ variant: "outline" }), "h-11 rounded-full justify-between bg-white")}
               >

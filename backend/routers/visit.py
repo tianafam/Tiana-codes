@@ -9,7 +9,11 @@ from fastapi.responses import Response
 
 from lib import demo_data as D
 from lib.ai import generate_json
-from lib.brief_pdf import render_brief_pdf
+from datetime import date, timedelta
+from zoneinfo import ZoneInfo
+
+from lib.brief_pdf import render_brief_pdf, render_summary_pdf
+from lib.tasks import classify
 from lib.dates import today_iso
 from lib.db import db
 from models.visit import (
@@ -24,6 +28,7 @@ from models.visit import (
     ClinicalNotes,
     ConfirmTasksRequest,
     ConsultUpdate,
+    Event,
     GenerateBriefRequest,
     GenerateNotesRequest,
     Instruction,
@@ -33,6 +38,7 @@ from models.visit import (
     Questionnaire,
     Service,
     Task,
+    TaskDayToggle,
     TaskStatusUpdate,
     Transcript,
     Visit,
@@ -58,14 +64,31 @@ async def load(persona: str) -> Visit:
     if not doc:
         doc = Visit(id=cfg["visit_id"], persona=persona, patient=cfg["patient"], updated_at=now()).model_dump()
         await db.visits.insert_one({**doc})
-    return Visit(**doc)
+    v = Visit(**doc)
+    v.today = today_iso(D.TZ)
+    return v
 
 
 async def save(v: Visit) -> Visit:
     v.updated_at = now()
+    v.today = today_iso(D.TZ)
     await db.visits.replace_one({"id": v.id}, v.model_dump(), upsert=True)
     return v
 
+
+def log(v: Visit, actor: str, actor_name: str, type_: str, message: str) -> None:
+    """Audit timeline entry: who did what, when."""
+    v.events.append(Event(id=uuid.uuid4().hex[:10], at=now(), actor=actor, actor_name=actor_name, type=type_, message=message))
+
+
+async def notify(audience: str, persona: str, title: str, body: str, link: str) -> None:
+    await db.notifications.insert_one({
+        "id": uuid.uuid4().hex, "audience": audience, "persona": persona, "title": title, "body": body,
+        "link": link, "created_at": now(), "read": False,
+    })
+
+
+DR = D.CLINICIAN["name"]
 
 PersonaQ = Query("alex", description="Demo persona id")
 
@@ -118,6 +141,7 @@ async def get_visit(persona: str = PersonaQ):
 @router.post("/visit/reset", response_model=Visit)
 async def reset_visit(persona: str = PersonaQ):
     await db.visits.delete_many({"id": persona_cfg(persona)["visit_id"]})
+    await db.notifications.delete_many({"persona": persona})
     return await load(persona)
 
 
@@ -127,6 +151,7 @@ async def submit_questionnaire(body: Questionnaire, persona: str = PersonaQ):
     v = await load(persona)
     v.questionnaire = body
     v.pathway = PathwaySuggestion(**D.suggest_pathway(body.model_dump()))
+    log(v, "patient", v.patient.name, "questionnaire", f"Answered guided questions — suggested {v.pathway.service_name}")
     return await save(v)
 
 
@@ -148,6 +173,10 @@ async def book(body: BookingRequest, persona: str = PersonaQ):
         service_id=service["id"], service_name=service["name"],
         slot_id=slot["id"], date=slot["date"], time=slot["time"], mode=slot["mode"], confirmed_at=now(),
     )
+    when = date.fromisoformat(slot["date"]).strftime("%a %d %b")
+    log(v, "patient", v.patient.name, "booking", f"Booked {service['name']} with {prac['name']} · {when} {slot['time']}")
+    await notify("clinician", persona, f"New booking: {v.patient.name}", f"{service['name']} · {when} at {slot['time']} · {clinic['name']}",
+                 f"/clinician/consult/{persona}")
     return await save(v)
 
 
@@ -215,6 +244,7 @@ async def generate_brief(body: GenerateBriefRequest, persona: str = PersonaQ):
         for i, p in enumerate(raw)
     ]
     v.brief = Brief(points=points, ai_source=ai_source, generated_at=now())
+    log(v, "ai", "GPT-5.2" if ai_source == "live" else "Prepared fallback", "brief_generated", f"Organised {len(points)} brief points from the patient's own words")
     return await save(v)
 
 
@@ -228,9 +258,15 @@ async def update_brief(body: BriefUpdate, persona: str = PersonaQ):
         if p.id in edits and edits[p.id].strip() != p.text:
             p.text = edits[p.id].strip()
             p.edited = True
+    was_shared_before = v.brief.shared and v.brief.status == "saved"
     v.brief.shared = body.shared  # BR-02: explicit patient choice
     v.brief.status = "saved"
+    was_shared = was_shared_before
     v.brief.saved_at = now()
+    log(v, "patient", v.patient.name, "brief_saved", "Saved preparation brief and shared it with the clinician" if body.shared else "Saved preparation brief privately")
+    if body.shared and not was_shared:
+        await notify("clinician", persona, f"{v.patient.name} shared a preparation brief", f"{len(v.brief.points)} points ready to review before the consult",
+                     f"/clinician/consult/{persona}")
     return await save(v)
 
 
@@ -296,6 +332,7 @@ async def generate_notes(body: GenerateNotesRequest, persona: str = PersonaQ):
     v.consult.edited = False
     v.consult.generated_at = now()
     v.tasks = []
+    log(v, "ai", "GPT-5.2" if ai_source == "live" else "Prepared fallback", "notes_drafted", f"Drafted SOAP notes and {len(ins)} patient-facing instructions from the transcript (status: Draft)")
     return await save(v)
 
 
@@ -317,6 +354,7 @@ def _apply_edits(v: Visit, body: ConsultUpdate) -> None:
 async def update_consult(body: ConsultUpdate, persona: str = PersonaQ):
     v = await load(persona)
     _apply_edits(v, body)
+    log(v, "clinician", DR, "notes_edited", "Saved edits to the draft notes" + (" (differs from AI draft)" if v.consult.edited else ""))
     return await save(v)
 
 
@@ -330,13 +368,27 @@ async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
         raise HTTPException(422, "Approve every follow-up item before releasing to the patient")
     v.consult.status = "approved"
     v.consult.approved_at = now()
-    v.consult.approved_by = D.CLINICIAN["name"]  # the signed-in demo clinician reviews every visit
-    # BR-05 / BR-07: tasks derive only from approved instructions, text preserved verbatim.
+    v.consult.approved_by = DR  # the signed-in demo clinician reviews every visit
+    if v.consult.edited:
+        log(v, "clinician", DR, "notes_edited", "Corrected the AI draft before approval")
+    log(v, "clinician", DR, "approved", f"Approved notes and released {len(v.consult.instructions)} patient-facing instructions")
+
+    cfg = persona_cfg(persona)
+    ins = [i.model_dump() for i in v.consult.instructions]
+    summary, cats, source = await classify(ins, v.consult.notes.assessment, v.consult.notes.plan, cfg["fallback_summary"], use_ai=v.consult.ai_source == "live")
+    v.consult.patient_summary = summary
+    v.consult.classified_by = source
+    # BR-05 / BR-07: tasks derive only from approved instructions; source text preserved verbatim.
     v.tasks = [
-        Task(id=f"task-{i.id}", title=D.TASK_TITLES[i.kind], kind=i.kind, source_instruction_id=i.id,
-             source_text=i.text, verbatim=i.kind == "medication")
-        for i in v.consult.instructions
+        Task(id=f"task-{i.id}", title=c["title"], kind=i.kind, source_instruction_id=i.id, source_text=i.text,
+             verbatim=i.kind == "medication", category=c["category"], duration_days=c["duration_days"],
+             due_in_days=c["due_in_days"], classified_by=source)
+        for i, c in zip(v.consult.instructions, cats)
     ]
+    log(v, "ai", "GPT-5.2" if source == "ai" else "Keyword rules (fallback)", "tasks_classified",
+        "Sorted the plan into " + ", ".join(f"{n} {k.replace('_', '-')}" for k in ("daily", "follow_up", "one_time", "urgent") if (n := sum(t.category == k for t in v.tasks))))
+    await notify("patient", persona, f"{DR} released your treatment plan", f"{len(v.tasks)} follow-up items are ready for you to review and accept",
+                 "/patient/follow-through")
     return await save(v)
 
 
@@ -347,10 +399,22 @@ async def confirm_tasks(body: ConfirmTasksRequest, persona: str = PersonaQ):
     if v.consult.status != "approved":
         raise HTTPException(409, "Follow-up tasks are released only after clinician approval")
     ids = set(body.task_ids)
+    today = date.fromisoformat(today_iso(D.TZ))
+    consult_day = datetime.fromisoformat(v.consult.approved_at).astimezone(ZoneInfo(D.TZ)).date() if v.consult.approved_at else today
+    accepted = []
     for t in v.tasks:
         if t.id in ids and t.status == "suggested":
             t.status = "todo"
             t.confirmed_at = now()
+            if t.category == "daily":
+                t.start_date = today.isoformat()
+                t.end_date = (today + timedelta(days=(t.duration_days or 14) - 1)).isoformat()
+            if t.category == "follow_up" and t.due_in_days:
+                t.due_date = (consult_day + timedelta(days=t.due_in_days)).isoformat()  # auto deadline from clinician timeframe
+            accepted.append(t.title)
+    if accepted:
+        log(v, "patient", v.patient.name, "tasks_accepted", f"Accepted {len(accepted)} task(s): " + ", ".join(accepted))
+        await notify("clinician", persona, f"{v.patient.name} accepted the care plan", f"{len(accepted)} task(s) now active", f"/clinician/consult/{persona}")
     return await save(v)
 
 
@@ -363,4 +427,39 @@ async def update_task(task_id: str, body: TaskStatusUpdate, persona: str = Perso
     if task.status == "suggested":
         raise HTTPException(409, "Confirm this task before tracking it")
     task.status = body.status
+    if body.status == "completed":
+        log(v, "patient", v.patient.name, "task_completed", f"Completed: {task.title}")
     return await save(v)
+
+
+@router.post("/visit/tasks/{task_id}/day", response_model=Visit)
+async def toggle_task_day(task_id: str, body: TaskDayToggle, persona: str = PersonaQ):
+    v = await load(persona)
+    task = next((t for t in v.tasks if t.id == task_id), None)
+    if not task or task.category != "daily":
+        raise HTTPException(404, "Daily task not found")
+    if task.status == "suggested" or not task.start_date or not task.end_date:
+        raise HTTPException(409, "Accept this task before ticking off days")
+    if not (task.start_date <= body.date <= task.end_date):
+        raise HTTPException(422, "That day is outside this task's schedule")
+    if body.date > v.today:
+        raise HTTPException(422, "You can't tick off a future day")
+    days = set(task.done_dates)
+    days.add(body.date) if body.done else days.discard(body.date)
+    task.done_dates = sorted(days)
+    total = (date.fromisoformat(task.end_date) - date.fromisoformat(task.start_date)).days + 1
+    was_done = task.status == "completed"
+    task.status = "completed" if len(days) >= total else ("in_progress" if days else "todo")
+    if task.status == "completed" and not was_done:
+        log(v, "patient", v.patient.name, "task_completed", f"Finished all {total} days: {task.title}")
+    return await save(v)
+
+
+@router.get("/visit/summary/pdf")
+async def summary_pdf(persona: str = PersonaQ):
+    v = await load(persona)
+    if v.consult.status != "approved":
+        raise HTTPException(404, "Your visit summary is available once your clinician approves it")
+    first = v.patient.name.split()[0].lower()
+    return Response(content=render_summary_pdf(v), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="visitready-visit-summary-{first}.pdf"'})

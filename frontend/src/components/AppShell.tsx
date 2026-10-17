@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, LogOut, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
 import DemoGuide from "@/components/DemoGuide";
+import NotificationBell from "@/components/NotificationBell";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -19,10 +20,10 @@ import type { Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const PATIENT_NAV = [
-  { to: "/journey", label: "My journey", id: "journey" },
-  { to: "/navigate", label: "Find care", id: "navigate" },
-  { to: "/prep", label: "Prepare", id: "prep" },
-  { to: "/actions", label: "Follow-up", id: "actions" },
+  { to: "/patient/journey", label: "My journey", id: "journey" },
+  { to: "/patient/navigate", label: "Find care", id: "navigate" },
+  { to: "/patient/prep", label: "Prepare", id: "prep" },
+  { to: "/patient/follow-through", label: "Follow-through", id: "follow-through" },
 ];
 
 export default function AppShell({ children, mode = "patient" }: { children: ReactNode; mode?: "patient" | "clinician" }) {
@@ -40,7 +41,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
       onSuccess: () => {
         setResetOpen(false);
         toast.success(`Demo reset — ${persona?.patient.name ?? "the"} journey starts fresh`);
-        navigate("/");
+        navigate("/patient");
       },
     });
 
@@ -52,15 +53,24 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             <span className="font-semibold text-[#FCD34D] tracking-[0.15em] uppercase mr-2">Demo</span>
             Simulated journey with fictional patients, clinics and clinicians. Not a real healthcare service.
           </span>
-          <span className="flex items-center gap-1.5">
-            <Phone className="size-3.5" /> In an emergency call <strong className="text-white">000</strong>
+          <span className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <Phone className="size-3.5" /> In an emergency call <strong className="text-white">000</strong>
+            </span>
+            <button
+              data-testid={clinician ? "demo-switch-to-patient" : "demo-switch-to-clinician"}
+              onClick={() => navigate(clinician ? "/patient/journey" : clinicianHome())}
+              className="inline-flex items-center gap-1 rounded-full border border-white/20 px-2.5 py-0.5 text-[11px] text-white hover:bg-white/10 transition-colors duration-200"
+            >
+              {clinician ? <User className="size-3" /> : <Stethoscope className="size-3" />} Demo: switch to {clinician ? "Patient" : "Clinician"}
+            </button>
           </span>
         </div>
       </div>
 
       <header className="sticky top-0 z-40 border-b border-line/80 bg-white/75 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
-          <Link to="/" data-testid="brand-home-link" className="flex items-center gap-2 shrink-0">
+          <Link to={clinician ? clinicianHome() : "/patient"} data-testid="brand-home-link" className="flex items-center gap-2 shrink-0">
             <span className="size-8 rounded-full bg-eucalypt text-white grid place-items-center">
               <Leaf className="size-4" />
             </span>
@@ -138,7 +148,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                         if (p.id === personaId) return;
                         setPersona(p.id);
                         toast.success(`Now demoing ${p.patient.name}`);
-                        navigate("/");
+                        navigate("/patient");
                       }}
                       className="items-start gap-3 py-2"
                     >
@@ -154,32 +164,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
               </DropdownMenuContent>
             </DropdownMenu>
             )}
-            <div role="tablist" aria-label="Demo role" className="flex rounded-full bg-sand p-1 border border-line">
-              <button
-                role="tab"
-                aria-selected={!clinician}
-                data-testid="role-toggle-patient"
-                onClick={() => navigate("/journey")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs sm:text-sm transition-[background-color,color,box-shadow] duration-200",
-                  !clinician ? "bg-white text-eucalypt shadow-sm font-semibold" : "text-ink-muted hover:text-ink",
-                )}
-              >
-                <User className="size-3.5" /> Patient
-              </button>
-              <button
-                role="tab"
-                aria-selected={clinician}
-                data-testid="role-toggle-clinician"
-                onClick={() => navigate(clinicianHome())}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs sm:text-sm transition-[background-color,color,box-shadow] duration-200",
-                  clinician ? "bg-eucalypt text-white shadow-sm font-semibold" : "text-ink-muted hover:text-ink",
-                )}
-              >
-                <Stethoscope className="size-3.5" /> Clinician
-              </button>
-            </div>
+            {(!clinician || clinicianSignedIn) && <NotificationBell audience={clinician ? "clinician" : "patient"} />}
             <Button variant="ghost" size="sm" data-testid="reset-demo-btn" onClick={() => setResetOpen(true)} className="text-ink-muted">
               <RotateCcw className="size-4" /> <span className="hidden lg:inline">Reset demo</span>
             </Button>

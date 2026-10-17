@@ -242,7 +242,7 @@ export default function Navigate() {
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  to={`/clinics?service=${pathway.service_id}`}
+                  to={`/patient/clinics?service=${pathway.service_id}`}
                   data-testid="pathway-find-clinics-btn"
                   className={cn(buttonVariants({ size: "lg" }), "h-11 px-5 rounded-full")}
                 >
@@ -251,7 +251,7 @@ export default function Navigate() {
                 {pathway.alternatives.map((a) => (
                   <Link
                     key={a}
-                    to={`/clinics?service=${a}`}
+                    to={`/patient/clinics?service=${a}`}
                     data-testid={`pathway-alt-${a}-link`}
                     className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11 rounded-full bg-white")}
                   >

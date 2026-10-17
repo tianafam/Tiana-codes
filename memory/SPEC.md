@@ -24,3 +24,14 @@ No login. Header toggle: Patient (→ /journey) / Clinician (→ /clinician). "R
 
 ## AI
 lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed text; any failure → labelled fallback (`ai_source: "fallback"`).
+
+## Separate areas, notifications, follow-through (latest)
+- Routes: patient area `/patient/*` (/patient, /patient/navigate, /patient/clinics, /patient/prep, /patient/follow-through, /patient/journey, /patient/brief/print); clinician area `/clinician/*`. `/` → /patient. Each area has its own header and a NotificationBell; the top strip has a "Demo: switch to Clinician/Patient" link (no role toggle).
+- Notifications (Mongo `notifications`, routers/notifications.py): GET /api/notifications?audience=patient&persona=alex | audience=clinician (all personas); POST /api/notifications/read-all?audience=..; POST /api/notifications/{id}/read. Created on: booking → clinician; brief shared → clinician; approval → patient ("Dr Sarah Lin released your treatment plan", link /patient/follow-through); tasks accepted → clinician. The bell polls every 4s. Reset clears that persona's notifications.
+- Audit timeline: Visit.events [{actor patient|clinician|ai|system, actor_name, type, message, at}], logged by every journey endpoint; shown on the consult page and follow-through page.
+- On approve: lib/tasks.classify → GPT-5.2 (only when the notes were a live AI draft) or keyword rules fallback → each Task gets category one_time|daily|follow_up|urgent, duration_days, due_in_days; Consult.patient_summary (plain language), classified_by ai|rules.
+- Accept (tasks/confirm): daily start_date = today (Melbourne), end_date = start + duration - 1; follow_up due_date = consult (approval) date + due_in_days.
+- POST /api/visit/tasks/{id}/day {date, done} ticks one day of a daily task (422 for future or out-of-range days; completed once all days are ticked). Visit.today = server Melbourne date.
+- GET /api/visit/summary/pdf → patient visit summary PDF (404 until approved).
+- Colours: urgent red, daily green, follow-up blue, one-time amber (types.ts CATEGORY_META). Motivational quote (static list, by date) when all daily tasks for a day are ticked.
+- Clinician dashboard filters: All / Brief shared / Awaiting approval (client-side); the dashboard refetches every 5s.

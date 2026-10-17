@@ -4,6 +4,7 @@ import { format, parseISO } from "date-fns";
 import { ArrowLeft, BadgeCheck, CalendarClock, CheckCheck, FileAudio, GitCompareArrows, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, User } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import BeforeAfter, { countChanges } from "@/components/BeforeAfter";
+import AuditTimeline from "@/components/AuditTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -194,6 +195,7 @@ export default function Clinician() {
               </Button>
             </div>
           </div>
+          {v && <AuditTimeline events={v.events} />}
         </aside>
 
         <section className="lg:col-span-7">
@@ -414,7 +416,7 @@ function NotesEditor({ consult }: { consult: Consult }) {
               <Link to="/clinician/dashboard" data-testid="confirm-back-dashboard-link" className={cn(buttonVariants({ variant: "secondary" }), "rounded-full")}>
                 Back to today's appointments
               </Link>
-              <Link to="/actions" data-testid="clinician-view-patient-actions-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white")}>
+              <Link to="/patient/follow-through" data-testid="clinician-view-patient-actions-link" className={cn(buttonVariants({ variant: "outline" }), "rounded-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white")}>
                 Switch to patient view
               </Link>
             </div>

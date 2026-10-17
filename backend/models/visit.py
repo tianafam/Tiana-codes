@@ -172,6 +172,8 @@ class Consult(BaseModel):
     generated_at: Optional[str] = None
     approved_at: Optional[str] = None
     approved_by: Optional[str] = None
+    patient_summary: Optional[str] = None  # plain-language summary of the approved notes
+    classified_by: Optional[Literal["ai", "rules"]] = None
 
 
 class GenerateNotesRequest(BaseModel):
@@ -191,6 +193,9 @@ class ApproveRequest(ConsultUpdate):
 TaskStatus = Literal["suggested", "todo", "in_progress", "completed"]
 
 
+TaskCategory = Literal["one_time", "daily", "follow_up", "urgent"]
+
+
 class Task(BaseModel):
     id: str
     title: str
@@ -200,6 +205,39 @@ class Task(BaseModel):
     verbatim: bool
     status: TaskStatus = "suggested"
     confirmed_at: Optional[str] = None
+    category: TaskCategory = "one_time"
+    duration_days: Optional[int] = None  # daily tasks
+    due_in_days: Optional[int] = None  # follow-ups, counted from the consult (approval) date
+    start_date: Optional[str] = None  # daily: the day the patient accepts
+    end_date: Optional[str] = None
+    due_date: Optional[str] = None
+    done_dates: list[str] = []
+    classified_by: Literal["ai", "rules"] = "rules"
+
+
+class TaskDayToggle(BaseModel):
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    done: bool
+
+
+class Event(BaseModel):
+    id: str
+    at: str
+    actor: Literal["patient", "clinician", "ai", "system"]
+    actor_name: str
+    type: str
+    message: str
+
+
+class Notification(BaseModel):
+    id: str
+    audience: Literal["patient", "clinician"]
+    persona: str
+    title: str
+    body: str
+    link: str
+    created_at: str
+    read: bool = False
 
 
 class ConfirmTasksRequest(BaseModel):
@@ -231,7 +269,9 @@ class Visit(BaseModel):
     brief: Optional[Brief] = None
     consult: Consult = Consult()
     tasks: list[Task] = []
+    events: list[Event] = []
     updated_at: str
+    today: str = ""  # server "today" (Australia/Melbourne), filled on every read
 
 
 # ---------- Clinician portal ----------

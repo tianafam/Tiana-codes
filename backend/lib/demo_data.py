@@ -296,6 +296,7 @@ PERSONAS: dict[str, dict] = {
         "transcript": SAMPLE_TRANSCRIPT,
         "fallback_notes": FALLBACK_NOTES,
         "fallback_instructions": FALLBACK_INSTRUCTIONS,
+        "fallback_summary": "Your cough is most likely a post-viral cough, which is common after a cold and usually settles. Because it has lasted three weeks, Dr Lin has asked for a chest X-ray and started a preventer inhaler. You'll review the results together in two weeks.",
     },
     "priya": {
         "id": "priya",
@@ -321,5 +322,6 @@ PERSONAS: dict[str, dict] = {
         "transcript": PRIYA_TRANSCRIPT,
         "fallback_notes": PRIYA_FALLBACK_NOTES,
         "fallback_instructions": PRIYA_FALLBACK_INSTRUCTIONS,
+        "fallback_summary": "The mole on your back has changed, and with your family history Dr Vance would like to remove it so it can be checked under a microscope. Most changing moles turn out to be harmless. You'll book a short procedure next week and a results appointment afterwards.",
     },
 }
