@@ -44,3 +44,6 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 - Patient header: no signed-in look. Shows "Sign in" / "Sign up" (demo toasts only) and no notification bell. Persona switching moved to the DEMO strip ("Demo persona: Alex ▾", testid persona-switcher-btn). Clinician area keeps its bell after "Continue as Dr Sarah Lin".
 - Home JourneyShowcase is an accordion: each step's simple preview + "Try" link opens directly under that step's progress line.
 - Inner pages (Navigate/Prep/Follow-through/Journey/Clinics) use a frosted PageHeader band over the hero photo and `frost-card` utility cards.
+- Sign in / Sign up open `/patient/sign-in` (demo): pick Alex or Priya → sets persona → /patient. Link to clinician portal.
+- Home symptom box shows live "Might suit" service chips matched from `Service.keywords` (served by /api/services); guidance only.
+- Demo strip keeps a prominent red "In an emergency call 000" pill (tel link). Showcase has no "Try …" links.

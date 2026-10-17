@@ -1,6 +1,6 @@
 // Hand-written mirrors of backend/models/visit.py — keep in sync.
 
-export interface Service { id: string; name: string; description: string }
+export interface Service { id: string; name: string; description: string; keywords: string[] }
 export interface Practitioner { id: string; name: string; role: string; bio: string; languages: string[] }
 export type SlotMode = "in_person" | "telehealth";
 export interface Slot { id: string; practitioner_id: string; date: string; time: string; mode: SlotMode }

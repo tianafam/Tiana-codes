@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, BadgeCheck, Check, Share2 } from "lucide-react";
+import { BadgeCheck, Check, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { tag: "Discover", title: "Find your next step", text: "Not sure where to start? Explore care options and find an appointment that fits.", to: "/patient/navigate" },
-  { tag: "Prepare", title: "Make every conversation count", text: "Turn your concerns and questions into a clear, editable appointment brief.", to: "/patient/prep" },
-  { tag: "Consult", title: "AI assists. Clinicians decide.", text: "AI drafts consultation notes while clinicians review and approve the care plan.", to: "/clinician" },
-  { tag: "Follow through", title: "Know what comes next", text: "Turn approved instructions into a personal checklist you can confirm and track.", to: "/patient/follow-through" },
+  { tag: "Discover", title: "Find your next step", text: "Not sure where to start? Explore care options and find an appointment that fits." },
+  { tag: "Prepare", title: "Make every conversation count", text: "Turn your concerns and questions into a clear, editable appointment brief." },
+  { tag: "Consult", title: "AI assists. Clinicians decide.", text: "AI drafts consultation notes while clinicians review and approve the care plan." },
+  { tag: "Follow through", title: "Know what comes next", text: "Turn approved instructions into a personal checklist you can confirm and track." },
 ];
 const DURATION = 5200;
 const d = (ms: number) => ({ animationDelay: `${ms}ms` });
@@ -114,9 +113,6 @@ export default function JourneyShowcase() {
                 <div data-testid={`showcase-preview-${i + 1}`} className="px-4 pb-5 grid md:grid-cols-[1fr_1.1fr] gap-6 items-center animate-fade-up">
                   <div className="md:pl-[52px]">
                     <p className="text-[15px] text-[#D1E7DF] leading-relaxed max-w-md">{s.text}</p>
-                    <Link to={s.to} data-testid="showcase-try-link" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white text-eucalypt-deep px-5 py-2.5 text-sm font-semibold hover:bg-[#FCD34D] transition-colors duration-200">
-                      Try {s.tag.toLowerCase()} <ArrowRight className="size-4" />
-                    </Link>
                   </div>
                   <Preview />
                 </div>

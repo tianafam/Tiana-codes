@@ -10,12 +10,12 @@ VISIT_ID = "visit-alex-001"
 PATIENT = {"name": "Alex Turner", "age": 32, "pronouns": "they/them", "suburb": "Carlton VIC 3053"}
 
 SERVICES = [
-    {"id": "gp", "name": "General Practice (GP)", "description": "Everyday health concerns, check-ups, referrals and ongoing care."},
-    {"id": "telehealth", "name": "Telehealth GP", "description": "A video or phone consult with a GP from home."},
-    {"id": "physio", "name": "Physiotherapy", "description": "Muscle, joint and movement concerns."},
-    {"id": "psychology", "name": "Psychology", "description": "Support for mood, stress, anxiety and wellbeing."},
-    {"id": "skin", "name": "Skin Check", "description": "Mole and skin spot checks with a skin-focused GP."},
-    {"id": "dental", "name": "Dental", "description": "Teeth, gums and oral health."},
+    {"id": "gp", "name": "General Practice (GP)", "description": "Everyday health concerns, check-ups, referrals and ongoing care.", "keywords": ["fever", "cough", "cold", "flu", "sore throat", "throat", "headache", "tired", "rash", "ear", "stomach", "pain", "check-up", "prescription", "vomit", "temperature"]},
+    {"id": "telehealth", "name": "Telehealth GP", "description": "A video or phone consult with a GP from home.", "keywords": ["fever", "cold", "flu", "sore throat", "prescription", "certificate", "home", "video"]},
+    {"id": "physio", "name": "Physiotherapy", "description": "Muscle, joint and movement concerns.", "keywords": ["back", "knee", "shoulder", "neck", "joint", "muscle", "sprain", "injury", "ankle", "stiff"]},
+    {"id": "psychology", "name": "Psychology", "description": "Support for mood, stress, anxiety and wellbeing.", "keywords": ["stress", "anxiety", "anxious", "sad", "low mood", "sleep", "worried", "panic", "mood"]},
+    {"id": "skin", "name": "Skin Check", "description": "Mole and skin spot checks with a skin-focused GP.", "keywords": ["mole", "skin", "spot", "freckle", "rash", "itch", "lump", "sunburn"]},
+    {"id": "dental", "name": "Dental", "description": "Teeth, gums and oral health.", "keywords": ["tooth", "teeth", "toothache", "gum", "jaw", "mouth"]},
 ]
 
 IMG_CLINIC_1 = "https://images.unsplash.com/photo-1505410603994-c3ac6269711f?crop=entropy&cs=srgb&fm=jpg&w=900&q=70"

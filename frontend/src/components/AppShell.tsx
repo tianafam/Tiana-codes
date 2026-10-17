@@ -36,7 +36,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
   const reset = useVisitMutation(() => apiPost<Visit>(vurl("/visit/reset")));
   const clinician = mode === "clinician";
   const { pathname } = useLocation();
-  const inJourney = pathname.startsWith("/patient/") && pathname !== "/patient";
+  const inJourney = pathname.startsWith("/patient/") && pathname !== "/patient" && pathname !== "/patient/sign-in";
   const personaId = usePersonaId();
   const clinicianSignedIn = useClinicianSignedIn();
   const personas = usePersonas();
@@ -96,8 +96,8 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
               </DropdownMenuContent>
             </DropdownMenu>
             )}
-            <span className="flex items-center gap-1.5">
-              <Phone className="size-3.5" /> In an emergency call <strong className="text-ink">000</strong>
+            <span data-testid="emergency-call-notice" className="inline-flex items-center gap-1.5 rounded-full bg-[#FEE2E2] text-[#991B1B] px-2.5 py-0.5 font-medium">
+              <Phone className="size-3.5" /> In an emergency call <a href="tel:000" className="font-bold underline-offset-2 hover:underline">000</a>
             </span>
             <button
               data-testid={clinician ? "demo-switch-to-patient" : "demo-switch-to-clinician"}
@@ -191,10 +191,10 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             )}
             {!clinician && (
               <>
-                <Button variant="ghost" size="sm" data-testid="header-sign-in-btn" className="text-ink" onClick={() => toast.info("Demo only — no account needed. Use the demo persona above to explore.")}>
+                <Button variant="ghost" size="sm" data-testid="header-sign-in-btn" className="text-ink" onClick={() => navigate("/patient/sign-in")}>
                   Sign in
                 </Button>
-                <Button size="sm" data-testid="header-sign-up-btn" className="rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-4" onClick={() => toast.info("Demo only — sign-up isn't available in this simulation.")}>
+                <Button size="sm" data-testid="header-sign-up-btn" className="rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-4" onClick={() => navigate("/patient/sign-in?mode=signup")}>
                   Sign up
                 </Button>
               </>

@@ -21,6 +21,10 @@ export default function Home() {
   const [symptoms, setSymptoms] = useState("");
   const services = useServices();
   const search = () => navigate(`/patient/clinics${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
+  const typed = symptoms.trim().toLowerCase();
+  const matches = typed.length < 3 ? [] : (services.data ?? []).filter((s) =>
+    s.keywords.some((k) => new RegExp(`\\b${k}\\b`).test(typed) || typed.split(/\s+/).some((w) => w.length >= 3 && k.startsWith(w))),
+  ).slice(0, 3);
   const guided = (text: string) => navigate(`/patient/navigate${text.trim() ? `?concern=${encodeURIComponent(text.trim())}` : ""}`);
 
   return (
@@ -68,6 +72,17 @@ export default function Home() {
                 </div>
                 <button type="submit" data-testid="pathway-guided-btn" className={GO}>Start <ArrowRight className="size-4" /></button>
               </form>
+              {matches.length > 0 ? (
+                <div data-testid="symptom-matches" className="mt-3 flex flex-wrap items-center gap-1.5 animate-fade-up">
+                  <span className="text-[12px] text-white/75">Might suit:</span>
+                  {matches.map((m) => (
+                    <Link key={m.id} to={`/patient/clinics?service=${m.id}`} data-testid={`symptom-match-${m.id}`} className="rounded-full bg-[#FCD34D] text-eucalypt-deep px-3 py-1 text-[13px] font-medium hover:bg-white transition-colors duration-200">
+                      {m.name}
+                    </Link>
+                  ))}
+                  <span className="text-[11px] text-white/60">Guidance only — not a diagnosis</span>
+                </div>
+              ) : (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <span className="text-[12px] text-white/75">Try:</span>
                 {EXAMPLES.map((x) => (
@@ -76,6 +91,7 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+              )}
             </div>
           </div>
         </div>

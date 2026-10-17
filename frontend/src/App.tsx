@@ -1,3 +1,4 @@
+import SignIn from "@/pages/SignIn";
 import { Routes, Route, Navigate as Redirect } from "react-router-dom";
 import Home from "@/pages/Home";
 import Navigate from "@/pages/Navigate";
@@ -16,6 +17,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Redirect to="/patient" replace />} />
       <Route path="/patient" element={<Home />} />
+      <Route path="/patient/sign-in" element={<SignIn />} />
       <Route path="/patient/navigate" element={<Navigate />} />
       <Route path="/patient/clinics" element={<Clinics />} />
       <Route path="/patient/prep" element={<Prep />} />

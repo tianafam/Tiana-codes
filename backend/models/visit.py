@@ -10,6 +10,7 @@ class Service(BaseModel):
     id: str
     name: str
     description: str
+    keywords: list[str] = []
 
 
 class Practitioner(BaseModel):
