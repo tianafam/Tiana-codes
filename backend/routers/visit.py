@@ -4,7 +4,8 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from lib.auth import clinician_persona, is_account, patient_persona
 from fastapi.responses import Response
 
 from lib import demo_data as D
@@ -17,6 +18,7 @@ from lib.tasks import classify
 from lib.dates import today_iso
 from lib.db import db
 from models.visit import (
+    Patient,
     ApproveRequest,
     Booking,
     BookingRequest,
@@ -58,13 +60,41 @@ def persona_cfg(persona: str) -> dict:
     return cfg
 
 
+def _age(dob: str) -> int:
+    try:
+        d = date.fromisoformat(dob)
+    except ValueError:
+        return 0
+    t = date.today()
+    return t.year - d.year - ((t.month, t.day) < (d.month, d.day))
+
+
+async def get_cfg(persona: str) -> dict:
+    """Demo personas use their fixed config. A real account reuses the matching fictional consult
+    template (Skin Check -> Priya's, otherwise Alex's) with its own visit id and profile."""
+    if persona in D.PERSONAS:
+        return D.PERSONAS[persona]
+    user = await db.users.find_one({"user_id": persona}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "Visit not found")
+    doc = await db.visits.find_one({"id": f"visit-{persona}"}, {"_id": 0, "booking": 1})
+    skin = bool(doc and doc.get("booking") and doc["booking"].get("service_id") == "skin")
+    prof = user.get("profile") or {}
+    name = prof.get("full_name") or user["email"].split("@")[0]
+    return {**D.PERSONAS["priya" if skin else "alex"], "visit_id": f"visit-{persona}",
+            "initials": "".join(w[0] for w in name.split()[:2]).upper() or "P",
+            "patient": {"name": name, "age": _age(prof.get("date_of_birth", "")), "pronouns": "", "suburb": ""}}
+
+
 async def load(persona: str) -> Visit:
-    cfg = persona_cfg(persona)
+    cfg = await get_cfg(persona)
     doc = await db.visits.find_one({"id": cfg["visit_id"]}, {"_id": 0})
     if not doc:
         doc = Visit(id=cfg["visit_id"], persona=persona, patient=cfg["patient"], updated_at=now()).model_dump()
         await db.visits.insert_one({**doc})
     v = Visit(**doc)
+    if persona not in D.PERSONAS:
+        v.patient = Patient(**cfg["patient"])  # keep the account's latest profile details
     v.today = today_iso(D.TZ)
     return v
 
@@ -90,7 +120,8 @@ async def notify(audience: str, persona: str, title: str, body: str, link: str) 
 
 DR = D.CLINICIAN["name"]
 
-PersonaQ = Query("alex", description="Demo persona id")
+PatientP = Depends(patient_persona)
+ClinicianP = Depends(clinician_persona)
 
 
 # ---------- reference data ----------
@@ -121,15 +152,17 @@ async def list_personas():
 
 
 @router.get("/demo/transcript", response_model=Transcript)
-async def sample_transcript(persona: str = PersonaQ):
-    cfg = persona_cfg(persona)
+async def sample_transcript(persona: str = ClinicianP):
+    cfg = await get_cfg(persona)
     return Transcript(title=cfg["transcript_title"], text=cfg["transcript"])
 
 
 @router.get("/clinician/dashboard", response_model=ClinicianDashboard)
 async def clinician_dashboard():
     rows = []
-    for pid, cfg in D.PERSONAS.items():
+    account_ids = [d["persona"] async for d in db.visits.find({"persona": {"$regex": "^user_"}, "booking": {"$ne": None}}, {"_id": 0, "persona": 1})]
+    for pid in [*D.PERSONAS.keys(), *account_ids]:
+        cfg = await get_cfg(pid)
         v = await load(pid)
         rows.append({
             "persona": pid, "visit_id": v.id, "patient": v.patient, "initials": cfg["initials"],
@@ -143,22 +176,27 @@ async def clinician_dashboard():
     return {"today": today_iso(D.TZ), "clinician": D.CLINICIAN, "appointments": rows}
 
 
+@router.get("/clinician/visit", response_model=Visit)
+async def clinician_visit(persona: str = ClinicianP):
+    return await load(persona)
+
+
 # ---------- visit ----------
 @router.get("/visit", response_model=Visit)
-async def get_visit(persona: str = PersonaQ):
+async def get_visit(persona: str = PatientP):
     return await load(persona)
 
 
 @router.post("/visit/reset", response_model=Visit)
-async def reset_visit(persona: str = PersonaQ):
-    await db.visits.delete_many({"id": persona_cfg(persona)["visit_id"]})
+async def reset_visit(persona: str = PatientP):
+    await db.visits.delete_many({"id": (await get_cfg(persona))["visit_id"]})
     await db.notifications.delete_many({"persona": persona})
     return await load(persona)
 
 
 # Feature 1 — navigation & booking
 @router.post("/visit/questionnaire", response_model=Visit)
-async def submit_questionnaire(body: Questionnaire, persona: str = PersonaQ):
+async def submit_questionnaire(body: Questionnaire, persona: str = PatientP):
     v = await load(persona)
     v.questionnaire = body
     v.pathway = PathwaySuggestion(**D.suggest_pathway(body.model_dump()))
@@ -167,7 +205,7 @@ async def submit_questionnaire(body: Questionnaire, persona: str = PersonaQ):
 
 
 @router.post("/visit/booking", response_model=Visit)
-async def book(body: BookingRequest, persona: str = PersonaQ):
+async def book(body: BookingRequest, persona: str = PatientP):
     clinic = next((c for c in D.clinics() if c["id"] == body.clinic_id), None)
     if not clinic:
         raise HTTPException(404, "Clinic not found")
@@ -176,7 +214,14 @@ async def book(body: BookingRequest, persona: str = PersonaQ):
         raise HTTPException(404, "That time is no longer available")
     prac = next(p for p in clinic["practitioners"] if p["id"] == slot["practitioner_id"])
     service = next((s for s in D.SERVICES if s["id"] == body.service_id), D.SERVICES[0])
+    if is_account(persona):
+        user = await db.users.find_one({"user_id": persona}, {"_id": 0, "profile": 1})
+        prof = (user or {}).get("profile") or {}
+        if not all(prof.get(f) for f in ("full_name", "date_of_birth", "mobile")):
+            raise HTTPException(409, "Please complete your profile before booking")
     v = await load(persona)
+    if v.booking and v.booking.slot_id == slot["id"] and v.booking.clinic_id == clinic["id"]:
+        return v  # repeated confirm click — the same appointment, never a duplicate
     v.booking = Booking(
         reference=f"VR-{uuid.uuid4().hex[:6].upper()}",
         clinic_id=clinic["id"], clinic_name=clinic["name"], clinic_address=clinic["address"],
@@ -193,7 +238,7 @@ async def book(body: BookingRequest, persona: str = PersonaQ):
 
 # Feature 2 — preparation
 @router.put("/visit/prep", response_model=Visit)
-async def save_prep(body: PrepForm, persona: str = PersonaQ):
+async def save_prep(body: PrepForm, persona: str = PatientP):
     v = await load(persona)
     v.prep = body
     return await save(v)
@@ -223,7 +268,7 @@ BRIEF_SYSTEM = (
 
 
 @router.post("/visit/brief/generate", response_model=Visit)
-async def generate_brief(body: GenerateBriefRequest, persona: str = PersonaQ):
+async def generate_brief(body: GenerateBriefRequest, persona: str = PatientP):
     v = await load(persona)
     if not v.booking:
         raise HTTPException(409, "Book an appointment before preparing a brief")
@@ -260,7 +305,7 @@ async def generate_brief(body: GenerateBriefRequest, persona: str = PersonaQ):
 
 
 @router.put("/visit/brief", response_model=Visit)
-async def update_brief(body: BriefUpdate, persona: str = PersonaQ):
+async def update_brief(body: BriefUpdate, persona: str = PatientP):
     v = await load(persona)
     if not v.brief:
         raise HTTPException(409, "Generate a brief first")
@@ -282,7 +327,7 @@ async def update_brief(body: BriefUpdate, persona: str = PersonaQ):
 
 
 @router.get("/visit/brief/pdf")
-async def brief_pdf(persona: str = PersonaQ):
+async def brief_pdf(persona: str = PatientP):
     v = await load(persona)
     if not v.brief:
         raise HTTPException(404, "No brief has been generated yet")
@@ -303,8 +348,8 @@ NOTES_SYSTEM = (
 
 
 @router.post("/visit/consult/generate", response_model=Visit)
-async def generate_notes(body: GenerateNotesRequest, persona: str = PersonaQ):
-    cfg = persona_cfg(persona)
+async def generate_notes(body: GenerateNotesRequest, persona: str = ClinicianP):
+    cfg = await get_cfg(persona)
     v = await load(persona)
     if not v.booking:
         raise HTTPException(409, "No appointment booked for this patient yet")
@@ -362,7 +407,7 @@ def _apply_edits(v: Visit, body: ConsultUpdate) -> None:
 
 
 @router.put("/visit/consult", response_model=Visit)
-async def update_consult(body: ConsultUpdate, persona: str = PersonaQ):
+async def update_consult(body: ConsultUpdate, persona: str = ClinicianP):
     v = await load(persona)
     _apply_edits(v, body)
     log(v, "clinician", DR, "notes_edited", "Saved edits to the draft notes" + (" (differs from AI draft)" if v.consult.edited else ""))
@@ -370,7 +415,7 @@ async def update_consult(body: ConsultUpdate, persona: str = PersonaQ):
 
 
 @router.post("/visit/consult/approve", response_model=Visit)
-async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
+async def approve_consult(body: ApproveRequest, persona: str = ClinicianP):
     v = await load(persona)
     _apply_edits(v, body)
     if not v.consult.instructions:
@@ -384,7 +429,7 @@ async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
         log(v, "clinician", DR, "notes_edited", "Corrected the AI draft before approval")
     log(v, "clinician", DR, "approved", f"Approved notes and released {len(v.consult.instructions)} patient-facing instructions")
 
-    cfg = persona_cfg(persona)
+    cfg = await get_cfg(persona)
     ins = [i.model_dump() for i in v.consult.instructions]
     summary, cats, source = await classify(ins, v.consult.notes.assessment, v.consult.notes.plan, cfg["fallback_summary"], use_ai=v.consult.ai_source == "live")
     v.consult.patient_summary = summary
@@ -405,7 +450,7 @@ async def approve_consult(body: ApproveRequest, persona: str = PersonaQ):
 
 # Feature 4 — follow-up tracker
 @router.post("/visit/tasks/confirm", response_model=Visit)
-async def confirm_tasks(body: ConfirmTasksRequest, persona: str = PersonaQ):
+async def confirm_tasks(body: ConfirmTasksRequest, persona: str = PatientP):
     v = await load(persona)
     if v.consult.status != "approved":
         raise HTTPException(409, "Follow-up tasks are released only after clinician approval")
@@ -430,7 +475,7 @@ async def confirm_tasks(body: ConfirmTasksRequest, persona: str = PersonaQ):
 
 
 @router.patch("/visit/tasks/{task_id}", response_model=Visit)
-async def update_task(task_id: str, body: TaskStatusUpdate, persona: str = PersonaQ):
+async def update_task(task_id: str, body: TaskStatusUpdate, persona: str = PatientP):
     v = await load(persona)
     task = next((t for t in v.tasks if t.id == task_id), None)
     if not task:
@@ -444,7 +489,7 @@ async def update_task(task_id: str, body: TaskStatusUpdate, persona: str = Perso
 
 
 @router.post("/visit/tasks/{task_id}/day", response_model=Visit)
-async def toggle_task_day(task_id: str, body: TaskDayToggle, persona: str = PersonaQ):
+async def toggle_task_day(task_id: str, body: TaskDayToggle, persona: str = PatientP):
     v = await load(persona)
     task = next((t for t in v.tasks if t.id == task_id), None)
     if not task or task.category != "daily":
@@ -467,7 +512,7 @@ async def toggle_task_day(task_id: str, body: TaskDayToggle, persona: str = Pers
 
 
 @router.get("/visit/summary/pdf")
-async def summary_pdf(persona: str = PersonaQ):
+async def summary_pdf(persona: str = PatientP):
     v = await load(persona)
     if v.consult.status != "approved":
         raise HTTPException(404, "Your visit summary is available once your clinician approves it")

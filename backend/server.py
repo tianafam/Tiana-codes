@@ -64,6 +64,8 @@ from routers.visit import router as visit_router
 api_router.include_router(visit_router)
 from routers.notifications import router as notifications_router
 api_router.include_router(notifications_router)
+from routers.auth import router as auth_router
+api_router.include_router(auth_router)
 
 # Include the router in the main app
 app.include_router(api_router)

@@ -45,3 +45,13 @@ async def aclient():
 
 
 # --- app-specific fixtures below this line ---
+
+def attach_session(resp: httpx.Response, c: httpx.Client) -> str:
+    """The app's session cookie is Secure; httpx (plain http://localhost) won't
+    re-attach a Secure cookie from its jar on later requests, even though curl's
+    localhost exemption would. Pull the token and set it as a default header
+    instead, so authed test clients behave like a real https browser session."""
+    token = resp.cookies.get("session_token")
+    assert token, f"no session_token cookie on response: {resp.text}"
+    c.headers["Cookie"] = f"session_token={token}"
+    return token

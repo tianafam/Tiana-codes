@@ -36,6 +36,7 @@ function Row({ a, onOpen }: { a: ClinicianAppointment; onOpen: () => void }) {
         <div className="w-16 text-center">
           <p data-testid={`appointment-time-${a.persona}`} className="font-mono text-lg text-ink">{a.booking?.time ?? "—"}</p>
           <p className="text-[10px] uppercase tracking-[0.15em] text-ink-muted">{a.booking ? format(parseISO(a.booking.date), "EEE d MMM") : "No booking"}</p>
+          {a.booking && <p data-testid={`appointment-ref-${a.persona}`} className="font-mono text-[10px] text-ink-muted">{a.booking.reference}</p>}
         </div>
         <span className="size-11 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-sm font-semibold shrink-0">{a.initials}</span>
       </div>

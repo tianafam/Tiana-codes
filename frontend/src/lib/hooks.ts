@@ -12,7 +12,7 @@ export function useVisit() {
   const signedIn = useSignedIn();
   const clinicianArea = useLocation().pathname.startsWith("/clinician");
   // Guests have no journey yet — patient pages render their empty states. Clinicians always see the visit.
-  return useQuery({ queryKey: visitKey(persona), queryFn: () => apiGet<Visit>(vurl("/visit")), enabled: signedIn || clinicianArea });
+  return useQuery({ queryKey: visitKey(persona), queryFn: () => apiGet<Visit>(vurl(clinicianArea ? "/clinician/visit" : "/visit")), enabled: signedIn || clinicianArea });
 }
 /** Server-anchored "today" (Melbourne), for pages that render without a visit. */
 export const useToday = () => useQuery({ queryKey: ["today"], queryFn: () => apiGet<{ today: string }>("/today"), staleTime: 60_000 });
@@ -35,6 +35,7 @@ export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
     const detail = (e.body as { detail?: unknown } | null)?.detail;
     if (typeof detail === "string") return detail;
+    if (Array.isArray(detail) && typeof detail[0]?.msg === "string") return String(detail[0].msg).replace(/^Value error, /, "");
     return "Please check the details and try again.";
   }
   return "We couldn't reach the server. Please try again.";

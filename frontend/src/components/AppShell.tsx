@@ -6,7 +6,9 @@ import NotificationBell from "@/components/NotificationBell";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { clearGuest, setSignedIn as setPatientSignedIn, useSignedIn } from "@/lib/persona";
+import { clearGuest, useSessionMode, useSignedIn } from "@/lib/persona";
+import { signOut as doSignOut, useMe } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { clinicianHome, setClinicianSignedIn, useClinicianSignedIn } from "@/lib/clinicianSession";
 import { useCurrentPersona } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -40,10 +42,16 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
   const clinicianSignedIn = useClinicianSignedIn();
   const patientSignedIn = useSignedIn();
   const persona = useCurrentPersona();
+  const sessionMode = useSessionMode();
+  const me = useMe();
+  const qc = useQueryClient();
+  const accountName = me.data ? (me.data.profile.preferred_name || me.data.profile.full_name || me.data.email) : "";
+  const shownName = sessionMode === "account" ? accountName.split(" ")[0] : persona?.patient.name.split(" ")[0] ?? "";
+  const shownInitials = sessionMode === "account" ? (accountName.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "Me") : persona?.initials ?? "…";
+  const here = encodeURIComponent(pathname + window.location.search);
 
   const signOut = () => {
-    setPatientSignedIn(false);
-    clearGuest();
+    void doSignOut(qc);
     toast.success("Signed out");
     navigate("/patient");
   };
@@ -190,13 +198,16 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                     data-testid="patient-account-btn"
                     className="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 text-[15px] hover:border-eucalypt/50 transition-colors duration-200"
                   >
-                    <span className="size-8 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-xs font-semibold">{persona?.initials ?? "…"}</span>
-                    <span data-testid="persona-current-name" className="hidden sm:inline font-medium text-ink">{persona?.patient.name.split(" ")[0] ?? ""}</span>
+                    <span className="size-8 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-xs font-semibold">{shownInitials}</span>
+                    <span data-testid="persona-current-name" className="hidden sm:inline font-medium text-ink">{shownName}</span>{sessionMode === "demo" && <span className="rounded-full bg-[#FEF3C7] text-[#92400E] px-1.5 text-[10px] font-bold">DEMO</span>}
                     <ChevronDown className="size-3.5 text-ink-muted" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuGroup>
-                      <DropdownMenuLabel>{persona ? `${persona.patient.name} · demo patient` : "Demo patient"}</DropdownMenuLabel>
+                      <DropdownMenuLabel>{sessionMode === "account" ? me.data?.email : persona ? `${persona.patient.name} · fictional demo patient` : "Demo patient"}</DropdownMenuLabel>
+                      {sessionMode === "account" && (
+                        <DropdownMenuItem data-testid="patient-profile-link" onClick={() => navigate("/patient/profile")} className="gap-2"><User className="size-4" /> My profile</DropdownMenuItem>
+                      )}
                       <DropdownMenuItem data-testid="patient-sign-out-btn" onClick={signOut} className="gap-2">
                         <LogOut className="size-4" /> Sign out
                       </DropdownMenuItem>
@@ -207,10 +218,10 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             )}
             {!clinician && !patientSignedIn && (
               <>
-                <Button variant="ghost" data-testid="header-sign-in-btn" className="h-10 rounded-full px-5 text-[15px] font-medium text-ink hover:bg-eucalypt-soft hover:text-eucalypt" onClick={() => navigate("/patient/sign-in")}>
+                <Button variant="ghost" data-testid="header-sign-in-btn" className="h-10 rounded-full px-5 text-[15px] font-medium text-ink hover:bg-eucalypt-soft hover:text-eucalypt" onClick={() => navigate(`/patient/sign-in?next=${here}`)}>
                   Sign in
                 </Button>
-                <Button data-testid="header-sign-up-btn" className="h-10 rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-6 text-[15px] font-semibold" onClick={() => navigate("/patient/sign-in?mode=signup")}>
+                <Button data-testid="header-sign-up-btn" className="h-10 rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-6 text-[15px] font-semibold" onClick={() => navigate(`/patient/sign-in?mode=signup&next=${here}`)}>
                   Sign up
                 </Button>
               </>

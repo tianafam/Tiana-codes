@@ -105,3 +105,13 @@ export const CATEGORY_META: Record<TaskCategory, { label: string; dot: string; c
   follow_up: { label: "Follow-up appointment", dot: "bg-[#2563EB]", chip: "bg-[#DBEAFE] text-[#1E40AF]", border: "border-l-[#2563EB]" },
   one_time: { label: "One-time", dot: "bg-[#D97706]", chip: "bg-[#FEF3C7] text-[#92400E]", border: "border-l-[#D97706]" },
 };
+
+// Patient accounts — mirrors models/auth.py
+export type Gender = "" | "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
+export interface UserProfile { full_name: string; date_of_birth: string; mobile: string; preferred_name: string; gender: Gender }
+export type ProfileUpdate = UserProfile;
+export interface PublicUser {
+  user_id: string; email: string; name: string; auth_providers: string[]; profile: UserProfile;
+  profile_complete: boolean; missing_fields: (keyof UserProfile)[];
+}
+export interface OkResponse { ok: boolean; message: string | null }

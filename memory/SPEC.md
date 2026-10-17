@@ -54,3 +54,11 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 - Guest picks clinic time → "Sign in to book this time" → /patient/sign-in?next=book. Choosing Alex/Priya: POST /visit/reset (fresh empty journey EVERY sign-in), then carries over questionnaire + booking → lands on /patient/prep. Sign up = same picker, fresh journey.
 - Signed-in header: notification bell + avatar menu with Sign out. "Fill X's demo answers/details" buttons appear only when signed in.
 - Patient stepper is 3 steps (Find care → Prepare → Follow-through); Consult only in clinician area. GET /api/today gives server date for empty calendar.
+
+## Accounts & booking (latest — supersedes the guest/sign-in notes above)
+- Real patient accounts: email+password (bcrypt, httpOnly `session_token` cookie, 7d) or Emergent Google; `/api/auth/{signup,login,logout,me,profile,google/session,forgot,reset}`. Forgot password sends a real email via Emergent-managed Resend (link → /patient/reset-password?token=, 1h, single use).
+- Profile (required: full name, DOB, mobile; optional preferred name, gender). Only missing fields are asked.
+- Account visit = persona `<user_id>` (visit id `visit-<user_id>`); patient endpoints are owner-only (404 otherwise). Clinician demo endpoints (/clinician/visit, consult generate/update/approve, transcript) can open any account visit; dashboard lists demo personas + every account with a booking. Account consults reuse Alex's (GP) or Priya's (Skin Check) fictional transcript.
+- Demo mode ("Continue as Alex Turner / Priya Sharma (Demo)") is separate, fictional, resets the journey.
+- Booking: /patient/book (also /patient/clinics) steps Clinic → Doctor → Date & time → Sign in → Profile → Review → Confirmed; selection kept in URL params (clinic, doctor, date, slot, service, step). Appointment created only on "Confirm booking"; repeated confirm for same slot is idempotent. Appointment ID = booking.reference shown in confirmation, My Journey and clinician dashboard.
+- Known limitation: clinician portal is a no-login demo, so it can view account visits.

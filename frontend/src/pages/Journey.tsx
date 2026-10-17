@@ -14,7 +14,7 @@ function summary(key: string, v?: Visit): string {
   if (!v) return "Not started yet";
   switch (key) {
     case "find":
-      if (v.booking) return `${v.booking.practitioner_name} at ${v.booking.clinic_name} · ${format(parseISO(v.booking.date), "EEE d MMM")} ${v.booking.time}`;
+      if (v.booking) return `${v.booking.practitioner_name} at ${v.booking.clinic_name} · ${format(parseISO(v.booking.date), "EEE d MMM")} ${v.booking.time} · Appointment ID ${v.booking.reference}`;
       if (v.pathway) return `Suggested: ${v.pathway.service_name}. Choose a clinic to book.`;
       return "Search directly or answer four guided questions.";
     case "prep":

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { BookingRequest, PathwaySuggestion, Questionnaire } from "@/lib/types";
+import type { PathwaySuggestion, Questionnaire } from "@/lib/types";
 
 // Which fictional demo persona the presenter is driving. Persisted so a refresh keeps the same journey.
 const KEY = "visitready-persona";
@@ -23,23 +23,32 @@ export const usePersonaId = () =>
     getPersona,
   );
 
-// ---- demo sign-in session: nobody is signed in until they pick a patient on /patient/sign-in ----
-const SIGNED_KEY = "visitready-signed-in";
-let signedIn = typeof localStorage !== "undefined" && localStorage.getItem(SIGNED_KEY) === "1";
+// ---- patient session: "account" = real signed-in user (httpOnly cookie, verified via /api/auth/me),
+// "demo" = clearly-labelled fictional demo access (Alex / Priya). null = guest. ----
+export type SessionMode = "demo" | "account" | null;
+const MODE_KEY = "visitready-session";
+const PATIENT_KEY = "visitready-patient-persona";
+let mode: SessionMode = (typeof localStorage !== "undefined" && (localStorage.getItem(MODE_KEY) as SessionMode)) || null;
 const sessionListeners = new Set<() => void>();
 const emitSession = () => sessionListeners.forEach((l) => l());
 const subscribeSession = (cb: () => void) => { sessionListeners.add(cb); return () => { sessionListeners.delete(cb); }; };
 
-export const isSignedIn = () => signedIn;
+export const getMode = () => mode;
+export const useSessionMode = () => useSyncExternalStore(subscribeSession, getMode);
+export const isSignedIn = () => mode !== null;
 export const useSignedIn = () => useSyncExternalStore(subscribeSession, isSignedIn);
-export function setSignedIn(on: boolean) {
-  signedIn = on;
-  localStorage.setItem(SIGNED_KEY, on ? "1" : "0");
+/** The patient identity to restore on patient pages (the clinician area may switch the active persona). */
+export const getPatientPersona = () => localStorage.getItem(PATIENT_KEY) ?? "alex";
+export function setSession(next: SessionMode, persona?: string) {
+  mode = next;
+  if (next) localStorage.setItem(MODE_KEY, next);
+  else localStorage.removeItem(MODE_KEY);
+  if (persona) { localStorage.setItem(PATIENT_KEY, persona); setPersona(persona); }
   emitSession();
 }
 
 // ---- guest answers kept in the browser until sign-in, then carried over to the new journey ----
-export interface GuestDraft { questionnaire?: Questionnaire; pathway?: PathwaySuggestion; booking?: BookingRequest }
+export interface GuestDraft { questionnaire?: Questionnaire; pathway?: PathwaySuggestion }
 const GUEST_KEY = "visitready-guest";
 let guest: GuestDraft = (() => { try { return JSON.parse(localStorage.getItem(GUEST_KEY) ?? "{}") as GuestDraft; } catch { return {}; } })();
 export const getGuest = () => guest;
