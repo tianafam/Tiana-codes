@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServices } from "@/lib/hooks";
 
-// Bright, uncluttered clinic waiting room — Pexels (free to use), photo 8459996.
-const HERO_IMG = "https://images.pexels.com/photos/8459996/pexels-photo-8459996.jpeg?auto=compress&cs=tinysrgb&w=1800&h=600&fit=crop";
+// GP talking with a patient — Unsplash (free to use), photo-1631217868264-e5b90bb7e133.
+const HERO_IMG = "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?crop=entropy&cs=srgb&fm=jpg&w=2000&q=75";
 
 const STEPS = [
   { icon: Compass, tag: "Discover", title: "Find your next step", text: "Not sure where to start? Explore care options and find an appointment that fits." },
@@ -16,7 +16,7 @@ const STEPS = [
   { icon: ListChecks, tag: "Follow through", title: "Know what comes next", text: "Turn approved instructions into a personal checklist you can confirm and track." },
 ];
 
-const CARD = "h-full rounded-3xl bg-white border border-line p-6 sm:p-7 flex flex-col transition-[box-shadow,border-color] duration-200 hover:border-eucalypt/40 hover:shadow-[0_18px_40px_-28px_rgba(23,46,39,0.45)]";
+const CARD = "h-full rounded-3xl bg-white/95 backdrop-blur-sm border border-white/60 p-6 sm:p-7 flex flex-col transition-[box-shadow,border-color] duration-200 hover:border-eucalypt/40 hover:shadow-[0_18px_40px_-28px_rgba(23,46,39,0.45)]";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -37,15 +37,12 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mt-6 relative h-36 sm:h-44 lg:h-48 rounded-3xl overflow-hidden border border-line">
-          <img src={HERO_IMG} alt="A bright, calm clinic waiting room" data-testid="home-hero-image" className="absolute inset-0 size-full object-cover object-center" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,38,32,0.35)_0%,rgba(17,38,32,0)_55%)]" />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 mt-8" aria-labelledby="help-heading">
-        <h2 id="help-heading" data-testid="pathways-heading" className="text-[26px] sm:text-[30px] tracking-tight text-ink">How can we help you today?</h2>
-        <div className="mt-4 grid md:grid-cols-2 gap-5">
+        <div data-testid="home-hero-banner" className="mt-6 relative rounded-3xl overflow-hidden border border-line">
+          <img src={HERO_IMG} alt="A GP talking with a patient in a calm clinic room" data-testid="home-hero-image" className="absolute inset-0 size-full object-cover object-[center_25%]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,38,32,0.15)_0%,rgba(17,38,32,0.55)_45%,rgba(17,38,32,0.85)_100%)]" />
+          <div className="relative px-4 sm:px-8 pt-36 sm:pt-32 lg:pt-36 pb-6 sm:pb-8" aria-labelledby="help-heading">
+            <h2 id="help-heading" data-testid="pathways-heading" className="text-[26px] sm:text-[30px] tracking-tight text-white">How can we help you today?</h2>
+            <div className="mt-4 grid md:grid-cols-2 gap-5">
           <div data-testid="pathway-direct-card" className={CARD}>
             <span className="size-10 rounded-full bg-eucalypt-soft text-eucalypt grid place-items-center"><Search className="size-5" /></span>
             <h3 className="mt-4 text-[22px] text-ink">I know what I need</h3>
@@ -91,6 +88,8 @@ export default function Home() {
               <Button data-testid="pathway-guided-btn" onClick={() => navigate("/patient/navigate")} className="h-11 px-5 rounded-xl group">
                 Start guided questions <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Button>
+            </div>
+          </div>
             </div>
           </div>
         </div>
