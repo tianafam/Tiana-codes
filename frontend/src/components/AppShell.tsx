@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Check, ChevronDown, LogOut, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
+import { Check, ChevronDown, ClipboardCheck, Compass, ListChecks, LogOut, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
 import DemoGuide from "@/components/DemoGuide";
 import NotificationBell from "@/components/NotificationBell";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { setPersona, usePersonaId } from "@/lib/persona";
 import { clinicianHome, setClinicianSignedIn, useClinicianSignedIn } from "@/lib/clinicianSession";
@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils";
 
 // "My journey" is the parent; its three steps live in a submenu instead of competing as top-level tabs.
 const JOURNEY_STEPS = [
-  { to: "/patient/navigate", label: "Find care", n: 1, id: "navigate" },
-  { to: "/patient/prep", label: "Prepare", n: 2, id: "prep" },
-  { to: "/patient/follow-through", label: "Follow-through", n: 3, id: "follow-through" },
+  { to: "/patient/navigate", label: "Find care", n: 1, id: "navigate", icon: Compass, hint: "Answer a few questions and book the right appointment" },
+  { to: "/patient/prep", label: "Prepare", n: 2, id: "prep", icon: ClipboardCheck, hint: "Turn your concerns into a brief for your doctor" },
+  { to: "/patient/follow-through", label: "Follow-through", n: 3, id: "follow-through", icon: ListChecks, hint: "Track the plan your clinician approved" },
 ];
 const PATIENT_NAV: { to: string; label: string; id: string; n?: number }[] = [
   { to: "/patient", label: "Home", id: "home" },
@@ -146,20 +146,28 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 >
                   My journey <ChevronDown className="size-3.5" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-60">
+                <DropdownMenuContent align="start" sideOffset={10} className="w-80 rounded-2xl border-line p-2 shadow-[0_24px_48px_-24px_rgba(23,46,39,0.45)]">
                   <DropdownMenuGroup>
-                    <DropdownMenuItem data-testid="nav-journey-link" onClick={() => navigate("/patient/journey")} className="font-medium">
-                      Journey overview
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Steps</DropdownMenuLabel>
-                    {JOURNEY_STEPS.map((j) => (
-                      <DropdownMenuItem key={j.to} data-testid={`nav-${j.id}-link`} onClick={() => navigate(j.to)} className="gap-2">
-                        <span className="size-5 rounded-full bg-sand text-ink-muted grid place-items-center text-[10px] font-semibold">{j.n}</span>
-                        {j.label}
-                        {pathname.startsWith(j.to) && <Check className="ml-auto size-4 text-eucalypt" />}
-                      </DropdownMenuItem>
-                    ))}
+                    {JOURNEY_STEPS.map((j) => {
+                      const on = pathname.startsWith(j.to);
+                      return (
+                        <DropdownMenuItem
+                          key={j.to}
+                          data-testid={`nav-${j.id}-link`}
+                          onClick={() => navigate(j.to)}
+                          className={cn("group items-start gap-3 rounded-xl px-3 py-2.5 cursor-pointer", on && "bg-eucalypt-soft")}
+                        >
+                          <span className={cn("mt-0.5 size-9 shrink-0 rounded-xl grid place-items-center transition-colors duration-200", on ? "bg-eucalypt text-white" : "bg-sand text-eucalypt group-focus:bg-eucalypt group-focus:text-white")}>
+                            <j.icon className="size-4" />
+                          </span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-[15px] font-medium text-ink">{j.label}</span>
+                            <span className="block text-xs text-ink-muted leading-snug">{j.hint}</span>
+                          </span>
+                          {on && <Check className="mt-1 size-4 text-eucalypt" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -221,7 +229,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                   cn("px-3 py-1 rounded-full text-sm whitespace-nowrap", isActive ? "bg-eucalypt-soft text-eucalypt" : "text-ink-muted")
                 }
               >
-                {n.n ? <span className="text-ink-muted/70 mr-0.5">{n.n}.</span> : null}{n.label}
+                {n.label}
               </NavLink>
             ))}
           </nav>
