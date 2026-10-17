@@ -37,7 +37,11 @@ class Clinic(BaseModel):
     image: str
     bulk_billing: bool
     rating: float
-    distance_km: float
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    online: bool = False
+    fictional: bool = True
+    distance_km: Optional[float] = None  # straight-line km from the searched location; None when not searched / online
     services: list[str]
     blurb: str
     practitioners: list[Practitioner]
@@ -299,3 +303,20 @@ class ClinicianDashboard(BaseModel):
     today: str
     clinician: ClinicianProfile
     appointments: list[ClinicianAppointment]
+
+
+class GeoPoint(BaseModel):
+    label: str
+    lat: float
+    lng: float
+    source: str
+
+
+class NearbyClinics(BaseModel):
+    location: GeoPoint
+    radius_km: float
+    distance_method: str = "straight-line"
+    clinics: list[Clinic]          # in-person clinics within the radius, nearest first
+    online: list[Clinic]           # telehealth clinics — no distance
+    outside_count: int             # in-person clinics beyond the radius
+    nearest_outside_km: Optional[float] = None

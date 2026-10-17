@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { ArrowLeft, ArrowRight, CalendarCheck, Check, Loader2, MapPin, Pencil, Search, ShieldCheck, Star, Stethoscope, Video } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe, LocateFixed, Navigation, CalendarCheck, Check, Loader2, MapPin, Pencil, Search, ShieldCheck, Star, Stethoscope, Video } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import AuthPanel, { type AuthResult } from "@/components/AuthPanel";
 import ProfileForm from "@/components/ProfileForm";
@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiPost } from "@/lib/api";
 import { useMe } from "@/lib/auth";
-import { useClinics, useCurrentPersona, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
+import { errorMessage, useClinics, useNearbyClinics, useCurrentPersona, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
 import { useSessionMode, vurl } from "@/lib/persona";
 import type { BookingRequest, Clinic, Slot, Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -39,15 +39,29 @@ export default function Book() {
   const step = (params.get("step") as StepId) || "clinic";
   const serviceNames = useMemo(() => Object.fromEntries((services.data ?? []).map((s) => [s.id, s.name])), [services.data]);
 
+  // Location search: the server geocodes the place and returns real straight-line distances.
+  const loc = params.get("loc") ?? "";
+  const radius = Number(params.get("radius") ?? 10);
+  const apptType = params.get("type") ?? "any"; // any | in_person | telehealth
+  const avail = params.get("avail") ?? "any"; // any | today
+  const nearby = useNearbyClinics(loc, radius);
+  const today = clinics.data?.[0]?.slots[0]?.date;
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return (clinics.data ?? []).filter((c) => {
+    const base = loc && nearby.data ? [...nearby.data.clinics, ...nearby.data.online] : loc ? [] : (clinics.data ?? []);
+    return base.filter((c) => {
       if (service !== "all" && !c.services.includes(service)) return false;
+      if (apptType === "telehealth" && !c.online) return false;
+      if (apptType === "in_person" && c.online) return false;
+      if (avail === "today" && !c.slots.some((s) => s.date === today)) return false;
       if (!needle) return true;
-      const hay = [c.name, c.suburb, ...c.services.map((s) => serviceNames[s] ?? s), ...c.practitioners.map((p) => p.name)].join(" ").toLowerCase();
-      return needle.split(/\s+/).some((w) => hay.includes(w));
+      const hay = [c.name, ...c.practitioners.map((p) => p.name)].join(" ").toLowerCase();
+      return needle.split(/\s+/).every((w) => hay.includes(w));
     });
-  }, [clinics.data, service, q, serviceNames]);
+  }, [clinics.data, nearby.data, loc, service, q, apptType, avail, today]);
+  const inPerson = filtered.filter((c) => !c.online);
+  const onlineList = filtered.filter((c) => c.online);
 
   const clinic: Clinic | undefined = clinics.data?.find((c) => c.id === params.get("clinic"));
   const doctor = clinic?.practitioners.find((p) => p.id === params.get("doctor"));
@@ -130,36 +144,71 @@ export default function Book() {
         <div key={step} className="mt-6 animate-fade-up">
           {step === "clinic" && (
             <>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-muted" />
-                  <Input data-testid="clinic-search-input" value={q} onChange={(e) => { const n = new URLSearchParams(params); if (e.target.value) n.set("q", e.target.value); else n.delete("q"); setParams(n, { replace: true }); }} placeholder="Search clinic, suburb or doctor" className="pl-9 h-11 bg-white" />
-                </div>
-                <select data-testid="clinic-service-select" value={service} onChange={(e) => go({ service: e.target.value === "all" ? null : e.target.value })} className="h-11 sm:w-64 rounded-md border border-input bg-white px-3 text-sm">
-                  <option value="all">All services</option>
-                  {(services.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div data-testid="clinic-list" className="mt-5 grid md:grid-cols-2 gap-4">
-                {clinics.isLoading && [0, 1, 2, 3].map((i) => <div key={i} className="h-36 rounded-3xl ai-shimmer" />)}
-                {!clinics.isLoading && filtered.length === 0 && <p data-testid="clinic-empty-state" className="md:col-span-2 rounded-3xl border border-dashed border-line p-8 text-center text-ink-muted">No clinics match. Try another service or suburb.</p>}
-                {filtered.map((c) => (
-                  <button key={c.id} data-testid={`clinic-card-${c.id}`} onClick={() => go({ clinic: c.id, doctor: null, slot: null, date: null, step: "doctor" })}
-                    className="group text-left rounded-3xl frost-card p-3 flex gap-4 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-eucalypt/40">
-                    <img src={c.image} alt="" className="size-24 rounded-2xl object-cover shrink-0" />
-                    <div className="min-w-0 py-1 flex-1">
-                      <p className="font-heading text-lg text-ink leading-tight">{c.name}</p>
-                      <p className="mt-1 text-xs text-ink-muted flex items-center gap-1"><MapPin className="size-3" />{c.suburb}{c.distance_km > 0 && ` · ${c.distance_km} km`}</p>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {c.bulk_billing && <Badge className="bg-eucalypt-soft text-eucalypt">Bulk billing</Badge>}
-                        <Badge variant="outline" className="gap-1"><Star className="size-3 fill-[#FBBF24] text-[#FBBF24]" />{c.rating}</Badge>
-                        {c.services.slice(0, 2).map((s) => <Badge key={s} variant="secondary">{serviceNames[s] ?? s}</Badge>)}
-                      </div>
-                    </div>
-                    <ArrowRight className="size-5 self-center text-ink-muted transition-transform duration-200 group-hover:translate-x-1" />
+              <LocationSearch initial={loc} onSearch={(v) => go({ loc: v || null })} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] uppercase tracking-[0.15em] font-semibold text-ink-muted mr-1">Within</span>
+                {[5, 10, 20, 50].map((r) => (
+                  <button key={r} data-testid={`radius-${r}`} data-active={radius === r} onClick={() => go({ radius: String(r) })}
+                    className={cn("rounded-full px-3 py-1 text-sm border transition-colors duration-200", radius === r ? "bg-eucalypt text-white border-eucalypt" : "bg-white border-line text-ink hover:border-eucalypt/50")}>
+                    {r} km
                   </button>
                 ))}
               </div>
+              <div className="mt-3 grid sm:grid-cols-4 gap-2">
+                <select data-testid="clinic-service-select" value={service} onChange={(e) => go({ service: e.target.value === "all" ? null : e.target.value })} className="h-10 rounded-md border border-input bg-white px-3 text-sm">
+                  <option value="all">All services</option>
+                  {(services.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <select data-testid="clinic-type-select" value={apptType} onChange={(e) => go({ type: e.target.value === "any" ? null : e.target.value })} className="h-10 rounded-md border border-input bg-white px-3 text-sm">
+                  <option value="any">Any appointment type</option>
+                  <option value="in_person">In person</option>
+                  <option value="telehealth">Telehealth (video)</option>
+                </select>
+                <select data-testid="clinic-availability-select" value={avail} onChange={(e) => go({ avail: e.target.value === "any" ? null : e.target.value })} className="h-10 rounded-md border border-input bg-white px-3 text-sm">
+                  <option value="any">Any availability</option>
+                  <option value="today">Available today</option>
+                </select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-muted" />
+                  <Input data-testid="clinic-search-input" value={q} onChange={(e) => { const n = new URLSearchParams(params); if (e.target.value) n.set("q", e.target.value); else n.delete("q"); setParams(n, { replace: true }); }} placeholder="Clinic or doctor name" className="pl-9 h-10 bg-white" />
+                </div>
+              </div>
+
+              {loc && nearby.data && (
+                <p data-testid="location-resolved" className="mt-4 text-sm text-ink-muted">
+                  <Navigation className="inline size-3.5 mr-1 text-eucalypt" />
+                  Showing clinics within <strong className="text-ink">{radius} km</strong> of <strong className="text-ink">{nearby.data.location.label.split(",").slice(0, 3).join(",")}</strong>, nearest first · straight-line distance ({nearby.data.location.source})
+                </p>
+              )}
+              {!loc && <p className="mt-4 text-sm text-ink-muted">Enter a suburb, postcode or address to see clinics near you and their distance.</p>}
+              {loc && nearby.isError && (
+                <p data-testid="location-error" role="alert" className="mt-4 rounded-2xl bg-[#FEF3F2] border border-[#FECDCA] px-4 py-3 text-sm text-[#B42318]">{errorMessage(nearby.error)}</p>
+              )}
+              <p className="mt-2 text-[11px] text-ink-muted">All clinics and practitioners are fictional demo data — not real medical providers.</p>
+
+              <div data-testid="clinic-list" className="mt-4 grid md:grid-cols-2 gap-4">
+                {(clinics.isLoading || nearby.isFetching) && [0, 1, 2, 3].map((i) => <div key={i} className="h-36 rounded-3xl ai-shimmer" />)}
+                {!clinics.isLoading && !nearby.isFetching && !nearby.isError && inPerson.length === 0 && (
+                  <div data-testid="clinic-empty-state" className="md:col-span-2 rounded-3xl border border-dashed border-line p-8 text-center">
+                    <p className="text-ink">{loc && nearby.data ? `No in-person clinics within ${radius} km match your filters.` : "No clinics match. Try another service or filter."}</p>
+                    {loc && nearby.data && radius < 50 && (
+                      <Button data-testid="expand-radius-btn" variant="outline" className="mt-4 rounded-full" onClick={() => go({ radius: String([5, 10, 20, 50].find((r) => r > radius)) })}>
+                        Expand search to {[5, 10, 20, 50].find((r) => r > radius)} km
+                      </Button>
+                    )}
+                    {loc && nearby.data?.nearest_outside_km != null && <p className="mt-2 text-xs text-ink-muted">Nearest clinic outside this area is {nearby.data.nearest_outside_km} km away.</p>}
+                  </div>
+                )}
+                {!nearby.isFetching && inPerson.map((c) => <ClinicCard key={c.id} c={c} serviceNames={serviceNames} onPick={() => go({ clinic: c.id, doctor: null, slot: null, date: null, step: "doctor" })} />)}
+              </div>
+              {!nearby.isFetching && onlineList.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-ink-muted mb-2"><Globe className="inline size-3.5 mr-1" />Available online — no distance</p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {onlineList.map((c) => <ClinicCard key={c.id} c={c} serviceNames={serviceNames} onPick={() => go({ clinic: c.id, doctor: null, slot: null, date: null, step: "doctor" })} />)}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -295,6 +344,43 @@ export default function Book() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function LocationSearch({ initial, onSearch }: { initial: string; onSearch: (v: string) => void }) {
+  const [value, setValue] = useState(initial);
+  useEffect(() => setValue(initial), [initial]);
+  return (
+    <form data-testid="location-search-form" className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => { e.preventDefault(); onSearch(value.trim()); }}>
+      <div className="relative flex-1">
+        <LocateFixed className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-eucalypt" />
+        <Input data-testid="location-search-input" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Suburb, postcode or address — e.g. Chatswood NSW or 2113" className="pl-9 h-12 bg-white text-[15px]" aria-label="Suburb, postcode or address" />
+      </div>
+      <Button type="submit" data-testid="location-search-btn" className="h-12 rounded-full px-6">Search nearby</Button>
+      {initial && <Button type="button" variant="ghost" data-testid="location-clear-btn" className="h-12 rounded-full" onClick={() => onSearch("")}>Clear</Button>}
+    </form>
+  );
+}
+
+function ClinicCard({ c, serviceNames, onPick }: { c: Clinic; serviceNames: Record<string, string>; onPick: () => void }) {
+  return (
+    <button data-testid={`clinic-card-${c.id}`} onClick={onPick}
+      className="group text-left rounded-3xl frost-card p-3 flex gap-4 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-eucalypt/40">
+      <img src={c.image} alt="" className="size-24 rounded-2xl object-cover shrink-0" />
+      <div className="min-w-0 py-1 flex-1">
+        <p className="font-heading text-lg text-ink leading-tight">{c.name}</p>
+        <p className="mt-1 text-xs text-ink-muted flex items-center gap-1"><MapPin className="size-3" />{c.suburb}</p>
+        {c.distance_km != null && <p data-testid={`clinic-distance-${c.id}`} className="mt-1 text-xs font-semibold text-eucalypt">{c.distance_km} km away <span className="font-normal text-ink-muted">(straight-line)</span></p>}
+        {c.online && <p className="mt-1 text-xs font-semibold text-eucalypt">Online — no distance</p>}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge variant="outline" className="text-[11px]">Fictional demo</Badge>
+          {c.bulk_billing && <Badge className="bg-eucalypt-soft text-eucalypt">Bulk billing</Badge>}
+          <Badge variant="outline" className="gap-1"><Star className="size-3 fill-[#FBBF24] text-[#FBBF24]" />{c.rating}</Badge>
+          {c.services.slice(0, 2).map((s) => <Badge key={s} variant="secondary">{serviceNames[s] ?? s}</Badge>)}
+        </div>
+      </div>
+      <ArrowRight className="size-5 self-center text-ink-muted transition-transform duration-200 group-hover:translate-x-1" />
+    </button>
   );
 }
 

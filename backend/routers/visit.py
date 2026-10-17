@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from lib.geo import geocode, haversine_km
 from lib.auth import clinician_persona, is_account, patient_persona
 from fastapi.responses import Response
 
@@ -18,6 +19,8 @@ from lib.tasks import classify
 from lib.dates import today_iso
 from lib.db import db
 from models.visit import (
+    GeoPoint,
+    NearbyClinics,
     Patient,
     ApproveRequest,
     Booking,
@@ -90,8 +93,10 @@ async def load(persona: str) -> Visit:
     cfg = await get_cfg(persona)
     doc = await db.visits.find_one({"id": cfg["visit_id"]}, {"_id": 0})
     if not doc:
-        doc = Visit(id=cfg["visit_id"], persona=persona, patient=cfg["patient"], updated_at=now()).model_dump()
-        await db.visits.insert_one({**doc})
+        # upsert (not insert) so concurrent first requests can't race into a duplicate-key error
+        fresh = Visit(id=cfg["visit_id"], persona=persona, patient=cfg["patient"], updated_at=now()).model_dump()
+        await db.visits.update_one({"id": cfg["visit_id"]}, {"$setOnInsert": fresh}, upsert=True)
+        doc = await db.visits.find_one({"id": cfg["visit_id"]}, {"_id": 0})
     v = Visit(**doc)
     if persona not in D.PERSONAS:
         v.patient = Patient(**cfg["patient"])  # keep the account's latest profile details
@@ -144,6 +149,32 @@ async def get_today():
 @router.get("/clinics", response_model=list[Clinic])
 async def list_clinics():
     return D.clinics()
+
+
+RADII = (5, 10, 20, 50)
+
+
+@router.get("/clinics/nearby", response_model=NearbyClinics)
+async def nearby_clinics(location: str = Query(..., min_length=2, max_length=120), radius_km: float = Query(10)):
+    """Geocode an Australian suburb/postcode/address, then filter fictional clinics by real straight-line distance."""
+    if radius_km not in RADII:
+        raise HTTPException(422, f"radius_km must be one of {list(RADII)}")
+    try:
+        point = await geocode(location)
+    except RuntimeError:
+        raise HTTPException(503, "Location lookup is unavailable right now. Please try again in a moment.")
+    if not point:
+        raise HTTPException(404, f"We couldn't find \"{location}\" in Australia. Try a suburb with its state, or a postcode.")
+    inside, outside, online = [], [], []
+    for c in D.clinics():
+        if c["online"]:
+            online.append(c)
+            continue
+        d = round(haversine_km(point["lat"], point["lng"], c["lat"], c["lng"]), 1)
+        (inside if d <= radius_km else outside).append({**c, "distance_km": d})
+    inside.sort(key=lambda c: c["distance_km"])
+    return NearbyClinics(location=GeoPoint(**point), radius_km=radius_km, clinics=inside, online=online,
+                         outside_count=len(outside), nearest_outside_km=min((c["distance_km"] for c in outside), default=None))
 
 
 @router.get("/personas", response_model=list[Persona])

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useLocation } from "react-router-dom";
 import { ApiError, apiGet } from "@/lib/api";
 import { usePersonaId, useSignedIn, vurl } from "@/lib/persona";
-import type { Clinic, Persona, Service, Transcript, Visit } from "@/lib/types";
+import type { Clinic, Persona, Service, Transcript, Visit, NearbyClinics } from "@/lib/types";
 
 export const visitKey = (persona: string) => ["visit", persona] as const;
 
@@ -24,6 +24,14 @@ export function useCurrentPersona(): Persona | undefined {
   const list = usePersonas().data;
   return signedIn ? list?.find((p) => p.id === id) : undefined;
 }
+export const useNearbyClinics = (location: string, radiusKm: number) =>
+  useQuery({
+    queryKey: ["clinics-nearby", location.trim().toLowerCase(), radiusKm],
+    queryFn: () => apiGet<NearbyClinics>(`/clinics/nearby?location=${encodeURIComponent(location.trim())}&radius_km=${radiusKm}`),
+    enabled: location.trim().length >= 2,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
 export const useClinics = () => useQuery({ queryKey: ["clinics"], queryFn: () => apiGet<Clinic[]>("/clinics") });
 export const useServices = () => useQuery({ queryKey: ["services"], queryFn: () => apiGet<Service[]>("/services") });
 export function useTranscript() {

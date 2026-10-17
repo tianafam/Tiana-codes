@@ -62,3 +62,8 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 - Demo mode ("Continue as Alex Turner / Priya Sharma (Demo)") is separate, fictional, resets the journey.
 - Booking: /patient/book (also /patient/clinics) steps Clinic → Doctor → Date & time → Sign in → Profile → Review → Confirmed; selection kept in URL params (clinic, doctor, date, slot, service, step). Appointment created only on "Confirm booking"; repeated confirm for same slot is idempotent. Appointment ID = booking.reference shown in confirmation, My Journey and clinician dashboard.
 - Known limitation: clinician portal is a no-login demo, so it can view account visits.
+
+## Location-based clinic search (latest)
+- Every in-person fictional clinic has real lat/lng (3 Melbourne + 9 Sydney: Macquarie Park, North Ryde, Epping, Chatswood, St Leonards, Sydney CBD, Surry Hills, Bondi Junction, Parramatta). Telehealth clinic: online=true, no coordinates.
+- GET /api/clinics/nearby?location=&radius_km=(5|10|20|50) → geocodes via OpenStreetMap Nominatim (countrycodes=au, 1 req/s, cached in Mongo `geocode_cache`; optional Google fallback if GOOGLE_MAPS_API_KEY set) → haversine straight-line distance, filtered by radius, sorted nearest; online clinics listed separately. 404 if not found, 503 if lookup unavailable, 422 bad radius.
+- Book clinic step: location box (URL param loc), radius chips (radius, default 10), service/type/availability filters, name filter; empty state offers "Expand search to N km". Only the typed place name is sent — no browser geolocation.

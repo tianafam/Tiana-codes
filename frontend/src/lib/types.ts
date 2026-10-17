@@ -6,7 +6,9 @@ export type SlotMode = "in_person" | "telehealth";
 export interface Slot { id: string; practitioner_id: string; date: string; time: string; mode: SlotMode }
 export interface Clinic {
   id: string; name: string; suburb: string; address: string; image: string; bulk_billing: boolean;
-  rating: number; distance_km: number; services: string[]; blurb: string;
+  rating: number; lat: number | null; lng: number | null; online: boolean; fictional: boolean;
+  /** straight-line km from the searched location; null when not searched or online */
+  distance_km: number | null; services: string[]; blurb: string;
   practitioners: Practitioner[]; slots: Slot[];
 }
 export interface Transcript { title: string; text: string }
@@ -115,3 +117,10 @@ export interface PublicUser {
   profile_complete: boolean; missing_fields: (keyof UserProfile)[];
 }
 export interface OkResponse { ok: boolean; message: string | null }
+
+// Location search — mirrors GeoPoint / NearbyClinics in models/visit.py
+export interface GeoPoint { label: string; lat: number; lng: number; source: string }
+export interface NearbyClinics {
+  location: GeoPoint; radius_km: number; distance_method: string;
+  clinics: Clinic[]; online: Clinic[]; outside_count: number; nearest_outside_km: number | null;
+}

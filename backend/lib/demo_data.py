@@ -32,7 +32,7 @@ _CLINICS = [
         "image": IMG_CLINIC_1,
         "bulk_billing": True,
         "rating": 4.8,
-        "distance_km": 0.6,
+        "lat": -37.7995, "lng": 144.9668, "online": False,
         "services": ["gp", "skin", "telehealth"],
         "blurb": "A warm neighbourhood practice with long appointments available and an on-site nurse.",
         "practitioners": [
@@ -48,7 +48,7 @@ _CLINICS = [
         "image": IMG_CLINIC_2,
         "bulk_billing": False,
         "rating": 4.6,
-        "distance_km": 2.4,
+        "lat": -37.783, "lng": 144.9895, "online": False,
         "services": ["gp", "physio", "psychology"],
         "blurb": "Multidisciplinary centre with GPs, physiotherapists and psychologists under one roof.",
         "practitioners": [
@@ -60,11 +60,11 @@ _CLINICS = [
         "id": "melbourne-telehealth",
         "name": "Melbourne Telehealth Hub",
         "suburb": "Online · Victoria",
-        "address": "Video and phone consults across Victoria",
+        "address": "Video and phone consults (online, Australia-wide demo)",
         "image": IMG_CLINIC_3,
         "bulk_billing": True,
         "rating": 4.5,
-        "distance_km": 0.0,
+        "lat": None, "lng": None, "online": True,
         "services": ["telehealth", "gp", "psychology"],
         "blurb": "Same-day video consults with GPs from home.",
         "practitioners": [
@@ -79,7 +79,7 @@ _CLINICS = [
         "image": IMG_CLINIC_4,
         "bulk_billing": False,
         "rating": 4.7,
-        "distance_km": 3.1,
+        "lat": -37.768, "lng": 144.9614, "online": False,
         "services": ["dental"],
         "blurb": "General and preventive dentistry.",
         "practitioners": [
@@ -90,6 +90,44 @@ _CLINICS = [
 
 _TIMES = ["08:45", "10:15", "13:30", "16:00", "17:30"]
 TZ = "Australia/Melbourne"  # fictional clinics are in Melbourne
+
+# ---- Fictional Sydney demo clinics (not real providers). Coordinates are real suburb/street locations so distances are genuine. ----
+def _syd(cid, name, suburb, address, lat, lng, services, blurb, practitioners, img, bulk=True, rating=4.6):
+    return {"id": cid, "name": name, "suburb": suburb, "address": address, "image": img, "bulk_billing": bulk, "rating": rating,
+            "lat": lat, "lng": lng, "online": False, "services": services, "blurb": blurb,
+            "practitioners": [{"id": pid, "name": pn, "role": role, "bio": bio, "languages": langs} for pid, pn, role, bio, langs in practitioners]}
+
+
+_CLINICS += [
+    _syd("macquarie-park-gp", "Macquarie Park Family Practice", "Macquarie Park NSW 2113", "Waterloo Road, Macquarie Park NSW 2113", -33.7770, 151.1230,
+         ["gp", "skin", "telehealth"], "Fictional demo practice near the business park, with early-morning appointments.",
+         [("dr-chen", "Dr Emily Chen", "General Practitioner", "Family medicine and respiratory care.", ["English", "Cantonese"])], IMG_CLINIC_1),
+    _syd("north-ryde-physio", "North Ryde Movement Physio", "North Ryde NSW 2113", "Lane Cove Road, North Ryde NSW 2113", -33.7969, 151.1243,
+         ["physio"], "Fictional demo physiotherapy studio for back, neck and sports injuries.",
+         [("sam-reid", "Sam Reid", "Physiotherapist", "Back pain and running injuries.", ["English"])], IMG_CLINIC_2, bulk=False, rating=4.7),
+    _syd("epping-dental", "Epping Smile Dental", "Epping NSW 2121", "Oxford Street, Epping NSW 2121", -33.7727, 151.0818,
+         ["dental"], "Fictional demo dental clinic offering check-ups and gentle cleans.",
+         [("dr-kim", "Dr Jun Kim", "Dentist", "General and preventive dentistry.", ["English", "Korean"])], IMG_CLINIC_3, bulk=False, rating=4.5),
+    _syd("chatswood-gp", "Chatswood Village GP", "Chatswood NSW 2067", "Victoria Avenue, Chatswood NSW 2067", -33.7969, 151.1803,
+         ["gp", "psychology", "telehealth"], "Fictional demo GP and wellbeing clinic close to Chatswood station.",
+         [("dr-wong", "Dr Grace Wong", "General Practitioner", "Women's health and mental health care plans.", ["English", "Mandarin"]),
+          ("mia-ross", "Mia Ross", "Psychologist", "Anxiety, stress and sleep.", ["English"])], IMG_CLINIC_1, rating=4.8),
+    _syd("st-leonards-skin", "St Leonards Skin Clinic", "St Leonards NSW 2065", "Pacific Highway, St Leonards NSW 2065", -33.8234, 151.1955,
+         ["skin", "gp"], "Fictional demo skin-check clinic with dermatoscope mole mapping.",
+         [("dr-ahmed", "Dr Omar Ahmed", "GP (Skin Cancer Medicine)", "Mole checks and skin spot reviews.", ["English", "Arabic"])], IMG_CLINIC_2),
+    _syd("town-hall-medical", "Town Hall Medical Centre", "Sydney NSW 2000", "George Street, Sydney NSW 2000", -33.8731, 151.2067,
+         ["gp", "skin", "telehealth"], "Fictional demo CBD practice for city workers, open late on weekdays.",
+         [("dr-brooks", "Dr Hannah Brooks", "General Practitioner", "Acute care and travel health.", ["English"])], IMG_CLINIC_1, rating=4.4),
+    _syd("surry-hills-mind", "Surry Hills Mind & Body", "Surry Hills NSW 2010", "Crown Street, Surry Hills NSW 2010", -33.8861, 151.2111,
+         ["psychology", "physio"], "Fictional demo practice for psychology and physiotherapy.",
+         [("dr-lopez", "Dr Sofia Lopez", "Clinical Psychologist", "Mood, stress and life transitions.", ["English", "Spanish"])], IMG_CLINIC_3, bulk=False, rating=4.9),
+    _syd("bondi-junction-gp", "Bondi Junction Health", "Bondi Junction NSW 2022", "Oxford Street, Bondi Junction NSW 2022", -33.8932, 151.2490,
+         ["gp", "skin"], "Fictional demo GP practice with sun-safety skin checks.",
+         [("dr-taylor", "Dr Liam Taylor", "General Practitioner", "Men's health and skin checks.", ["English"])], IMG_CLINIC_2),
+    _syd("parramatta-family", "Parramatta Family Doctors", "Parramatta NSW 2150", "Church Street, Parramatta NSW 2150", -33.8150, 151.0011,
+         ["gp", "dental", "telehealth"], "Fictional demo family practice in western Sydney.",
+         [("dr-singh", "Dr Arjun Singh", "General Practitioner", "Chronic conditions and family care.", ["English", "Punjabi", "Hindi"])], IMG_CLINIC_3, rating=4.6),
+]
 
 CLINICIAN = {"id": "dr-lin", "name": "Dr Sarah Lin", "role": "General Practitioner", "clinic": "Carlton Family Medical"}
 
@@ -118,7 +156,7 @@ def clinics() -> list[dict]:
             for pi, p in enumerate(c["practitioners"]):
                 times = _today_times(now) if d == 0 else [t for ti, t in enumerate(_TIMES) if (ti + pi + d) % 3 != 2]
                 for t in times:
-                    mode = "telehealth" if c["id"] == "melbourne-telehealth" else "in_person"
+                    mode = "telehealth" if c["online"] else "in_person"
                     slots.append({"id": f"{c['id']}_{p['id']}_{day}_{t}", "practitioner_id": p["id"], "date": day, "time": t, "mode": mode})
         out.append({**c, "slots": slots})
     return out
