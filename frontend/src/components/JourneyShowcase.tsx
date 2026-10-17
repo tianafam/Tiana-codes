@@ -87,16 +87,14 @@ export default function JourneyShowcase() {
   return (
     <div
       data-testid="journey-showcase"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       className="relative overflow-hidden rounded-[32px] bg-eucalypt-deep text-white p-4 sm:p-6 lg:p-8"
     >
       <div className="absolute -left-24 -bottom-24 size-80 rounded-full bg-eucalypt/50 blur-3xl pointer-events-none" aria-hidden />
-      <ol role="tablist" aria-label="VisitReady journey" className="relative space-y-1">
+      <ol role="tablist" aria-label="VisitReady journey" className="relative space-y-1" onMouseLeave={() => setPaused(false)}>
         {STEPS.map((s, i) => {
           const on = i === active;
           return (
-            <li key={s.tag} className={cn("rounded-2xl transition-[background-color] duration-300", on ? "bg-white/10" : "hover:bg-white/5")}>
+            <li key={s.tag} onMouseEnter={() => { setActive(i); setPaused(true); }} className={cn("rounded-2xl transition-[background-color] duration-300", on ? "bg-white/10" : "hover:bg-white/5")}>
               <button role="tab" aria-selected={on} data-testid={`showcase-tab-${i + 1}`} onClick={() => setActive(i)} className="group w-full text-left px-4 pt-3 pb-3">
                 <div className="flex items-baseline gap-4">
                   <span className={cn("font-heading text-3xl sm:text-4xl tabular-nums transition-colors duration-300", on ? "text-[#FCD34D]" : "text-white/30")}>0{i + 1}</span>

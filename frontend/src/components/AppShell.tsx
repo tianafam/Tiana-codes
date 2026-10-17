@@ -100,6 +100,13 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
               <Phone className="size-3.5" /> In an emergency call <a href="tel:000" className="font-bold underline-offset-2 hover:underline">000</a>
             </span>
             <button
+              data-testid="reset-demo-btn"
+              onClick={() => setResetOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-0.5 text-[11px] text-ink hover:border-eucalypt/50 transition-colors duration-200"
+            >
+              <RotateCcw className="size-3" /> Reset demo
+            </button>
+            <button
               data-testid={clinician ? "demo-switch-to-patient" : "demo-switch-to-clinician"}
               onClick={() => navigate(clinician ? "/patient/journey" : clinicianHome())}
               className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-0.5 text-[11px] text-ink hover:border-eucalypt/50 transition-colors duration-200"
@@ -125,7 +132,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 to="/patient"
                 end
                 data-testid="nav-home-link"
-                className={({ isActive }) => cn("px-3 py-1.5 rounded-full text-sm transition-colors duration-200", isActive ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand")}
+                className={({ isActive }) => cn("px-4 py-2 rounded-full text-[15px] font-medium transition-[background-color,color,box-shadow] duration-200", isActive ? "bg-eucalypt text-white shadow-[0_8px_20px_-10px_rgba(23,46,39,0.7)]" : "text-ink hover:bg-eucalypt-soft hover:text-eucalypt")}
               >
                 Home
               </NavLink>
@@ -133,8 +140,8 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 <DropdownMenuTrigger
                   data-testid="nav-journey-menu"
                   className={cn(
-                    "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors duration-200",
-                    inJourney ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand",
+                    "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[15px] font-medium transition-[background-color,color,box-shadow] duration-200",
+                    inJourney ? "bg-eucalypt text-white shadow-[0_8px_20px_-10px_rgba(23,46,39,0.7)]" : "text-ink hover:bg-eucalypt-soft hover:text-eucalypt",
                   )}
                 >
                   My journey <ChevronDown className="size-3.5" />
@@ -191,18 +198,15 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             )}
             {!clinician && (
               <>
-                <Button variant="ghost" size="sm" data-testid="header-sign-in-btn" className="text-ink" onClick={() => navigate("/patient/sign-in")}>
+                <Button variant="ghost" data-testid="header-sign-in-btn" className="h-10 rounded-full px-5 text-[15px] font-medium text-ink hover:bg-eucalypt-soft hover:text-eucalypt" onClick={() => navigate("/patient/sign-in")}>
                   Sign in
                 </Button>
-                <Button size="sm" data-testid="header-sign-up-btn" className="rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-4" onClick={() => navigate("/patient/sign-in?mode=signup")}>
+                <Button data-testid="header-sign-up-btn" className="h-10 rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-6 text-[15px] font-semibold" onClick={() => navigate("/patient/sign-in?mode=signup")}>
                   Sign up
                 </Button>
               </>
             )}
             {clinician && clinicianSignedIn && <NotificationBell audience={clinician ? "clinician" : "patient"} />}
-            <Button variant="ghost" size="sm" data-testid="reset-demo-btn" onClick={() => setResetOpen(true)} className="text-ink-muted">
-              <RotateCcw className="size-4" /> <span className="hidden lg:inline">Reset demo</span>
-            </Button>
           </div>
         </div>
         {!clinician && (

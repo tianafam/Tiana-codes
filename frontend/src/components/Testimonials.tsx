@@ -34,7 +34,7 @@ export default function Testimonials() {
             className="snap-start shrink-0 w-[85%] sm:w-[48%] lg:w-[31.5%] rounded-3xl bg-white border border-line p-6 flex flex-col transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-28px_rgba(23,46,39,0.5)]"
           >
             <span aria-hidden className="font-heading text-[64px] leading-[0.6] h-8 text-terracotta/80 select-none">“</span>
-            <blockquote className="mt-3 font-heading text-lg leading-snug text-ink flex-1">{p.quote}</blockquote>
+            <blockquote className="mt-3 font-heading text-lg leading-snug text-ink flex-1">{p.quote}<span aria-hidden className="ml-0.5 text-terracotta/80">”</span></blockquote>
             <figcaption className="mt-5 flex items-center gap-3">
               <span className={cn("size-11 rounded-full grid place-items-center font-semibold", p.tone)}>{p.name.split(" ")[1][0]}</span>
               <span>
