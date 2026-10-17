@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiPatch, apiPost } from "@/lib/api";
-import { formatDateTime, useVisit, useVisitMutation } from "@/lib/hooks";
-import { vurl } from "@/lib/persona";
+import { formatDateTime, useToday, useVisit, useVisitMutation } from "@/lib/hooks";
+import { useSignedIn, vurl } from "@/lib/persona";
 import { CATEGORY_META } from "@/lib/types";
 import type { ConfirmTasksRequest, Task, TaskCategory, TaskDayToggle, TaskStatusUpdate, Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ export default function FollowThrough() {
     <AppShell>
       <PageHeader
         stage="follow"
-        eyebrow="Step 4 · Follow-through"
+        eyebrow="Step 3 · Follow-through"
         title="Your follow-through plan"
         intro="Everything here comes from the plan your clinician approved. Accept the items, then track them day by day."
         aside={
@@ -73,17 +73,7 @@ export default function FollowThrough() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-8 space-y-8">
         {isLoading && <div className="h-64 rounded-3xl ai-shimmer" />}
-        {(isError || (v && !approved)) && (
-          <div data-testid="actions-locked" className="rounded-3xl border border-dashed border-line bg-white p-10 text-center">
-            <Lock className="mx-auto size-8 text-ink-muted" />
-            <h2 className="mt-3 text-2xl text-ink">Nothing to do yet</h2>
-            <p className="mt-2 text-ink-muted max-w-lg mx-auto">
-              {v?.consult.status === "draft"
-                ? "Your clinician is reviewing draft notes. Your plan is only released once they approve it — you'll get a notification."
-                : "After your appointment, your clinician's approved plan will appear here. You'll get a notification when it's ready."}
-            </p>
-          </div>
-        )}
+        {!isLoading && (isError || !approved) && <FollowEmpty draft={v?.consult.status === "draft"} />}
 
         {v && approved && (
           <>
@@ -173,6 +163,57 @@ export default function FollowThrough() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+/** Every follow-through feature, laid out but with no data until a clinician releases a plan. */
+function FollowEmpty({ draft }: { draft: boolean }) {
+  const signedIn = useSignedIn();
+  const today = useToday().data?.today;
+  return (
+    <>
+      <div data-testid="actions-locked" className="rounded-2xl bg-eucalypt-soft border border-eucalypt/20 px-5 py-4 flex items-start gap-3">
+        <Lock className="size-4 mt-0.5 text-eucalypt shrink-0" />
+        <p className="text-sm text-eucalypt">
+          <strong>Nothing to show yet.</strong>{" "}
+          {!signedIn ? "Sign in and complete a visit — your clinician's approved plan will fill this page."
+            : draft ? "Your clinician is reviewing draft notes. Your plan is only released once they approve it."
+            : "After your appointment, your clinician's approved plan will appear here."}
+        </p>
+      </div>
+      <div className="grid lg:grid-cols-12 gap-5">
+        <div data-testid="followthrough-empty-visit-card" className="lg:col-span-5 rounded-3xl bg-eucalypt-deep text-white p-6">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-[#6EE7B7] flex items-center gap-1.5"><Stethoscope className="size-3.5" /> Your consultation</p>
+          <p className="mt-3 font-heading text-2xl text-white/60">No consultation yet</p>
+          <p className="text-sm text-[#ADC5BE]">Your clinician, appointment time and clinic will show here.</p>
+        </div>
+        <div data-testid="followthrough-empty-results-card" className="lg:col-span-7 rounded-3xl frost-card p-6">
+          <h2 className="text-xl text-ink">What happened at your visit</h2>
+          <p className="mt-3 text-ink-muted leading-relaxed">A plain-language summary of your clinician's approved notes will appear here.</p>
+        </div>
+      </div>
+      <section data-testid="followthrough-empty-checklist">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-2xl text-ink">Your checklist</h2>
+          <div className="min-w-56">
+            <p className="text-sm text-ink-muted"><strong className="text-ink">0 of 0</strong> complete</p>
+            <div className="mt-1 h-1.5 rounded-full bg-sand" />
+          </div>
+        </div>
+        <div className="mt-4 rounded-3xl border border-dashed border-line bg-white/60 p-6">
+          <p className="text-sm text-ink-muted">Approved instructions become checklist items, colour-coded by type:</p>
+          <div className="mt-3 flex flex-wrap gap-2">{ORDER.map((c) => <CategoryChip key={c} c={c} />)}</div>
+        </div>
+      </section>
+      {today && (
+        <section data-testid="followthrough-empty-calendar">
+          <h2 className="text-2xl text-ink">Calendar</h2>
+          <p className="text-sm text-ink-muted mb-4">Daily tasks and follow-up deadlines will appear on the days they apply.</p>
+          <CareCalendar tasks={[]} today={today} onToggle={() => {}} busy={false} />
+        </section>
+      )}
+      <AuditTimeline events={[]} title="Visit timeline" />
+    </>
   );
 }
 

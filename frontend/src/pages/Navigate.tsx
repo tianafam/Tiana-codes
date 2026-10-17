@@ -9,10 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { vurl } from "@/lib/persona";
+import { setGuest, useGuest, useSignedIn, vurl } from "@/lib/persona";
+import { toast } from "sonner";
 import { apiPost } from "@/lib/api";
-import { useCurrentPersona, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
-import type { Preference, Questionnaire, Visit } from "@/lib/types";
+import { errorMessage, useCurrentPersona, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
+import type { PathwaySuggestion, Preference, Questionnaire, Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const EMPTY: Questionnaire = {
@@ -23,7 +24,7 @@ const DURATIONS = ["less than a week", "1–3 weeks", "more than 3 weeks", "seve
 const PREFS: { v: Preference; l: string }[] = [
   { v: "in_person", l: "In person" }, { v: "telehealth", l: "Telehealth" }, { v: "any", l: "No preference" },
 ];
-const STEP_TITLES = ["What's going on?", "How long has this been happening?", "Have you seen anyone about it?", "Where and how would you like to be seen?"];
+const STEP_TITLES = ["Not sure? Tell us how you feel", "How long has this been happening?", "Have you seen anyone about it?", "Where and how would you like to be seen?"];
 
 function Option({ active, onClick, children, testid }: { active: boolean; onClick: () => void; children: React.ReactNode; testid: string }) {
   return (
@@ -54,13 +55,26 @@ export default function Navigate() {
   const [editing, setEditing] = useState(!!initialConcern);
   const submit = useVisitMutation((q: Questionnaire) => apiPost<Visit>(vurl("/visit/questionnaire"), q), "Answers saved");
 
-  const pathway = visit.data?.pathway;
+  const signedIn = useSignedIn();
+  const guest = useGuest();
+  const [guestBusy, setGuestBusy] = useState(false);
+  // Signed-in patients save to their visit; guests keep answers in the browser until they sign in to book.
+  const pathway = signedIn ? visit.data?.pathway : guest.pathway;
+  const answers = signedIn ? visit.data?.questionnaire : guest.questionnaire;
   const showResult = !!pathway && !editing && !visit.isError;
   const set = <K extends keyof Questionnaire>(k: K, val: Questionnaire[K]) => setForm((f) => ({ ...f, [k]: val }));
   const canNext = [form.main_concern.trim().length >= 2, !!form.duration, true, form.location.trim().length >= 2][step];
   const serviceName = (id: string) => services.data?.find((s) => s.id === id)?.name ?? id;
 
-  const onSubmit = () => submit.mutate(form, { onSuccess: () => { setEditing(false); setStep(0); } });
+  const onSubmit = () => {
+    if (signedIn) return submit.mutate(form, { onSuccess: () => { setEditing(false); setStep(0); } });
+    setGuestBusy(true);
+    apiPost<PathwaySuggestion>("/pathway/suggest", form)
+      .then((p) => { setGuest({ questionnaire: form, pathway: p }); setEditing(false); setStep(0); })
+      .catch((e) => toast.error(errorMessage(e)))
+      .finally(() => setGuestBusy(false));
+  };
+  const busy = submit.isPending || guestBusy;
 
   return (
     <AppShell>
@@ -95,7 +109,7 @@ export default function Navigate() {
             <div key={step} className="mt-5 animate-fade-up">
               {step === 0 && (
                 <div className="space-y-4">
-                  <Label htmlFor="concern" className="text-ink-muted">Describe your main concern or symptoms</Label>
+                  <Label htmlFor="concern" className="text-ink-muted">Describe how you feel in your own words</Label>
                   <Textarea
                     id="concern"
                     data-testid="q-concern-input"
@@ -197,11 +211,11 @@ export default function Navigate() {
               </Button>
               {step < 3 ? (
                 <Button data-testid="q-next-btn" disabled={!canNext} onClick={() => setStep((s) => s + 1)} className="px-5">
-                  Next <ArrowRight className="size-4" />
+                  {step === 0 ? "Start" : "Next"} <ArrowRight className="size-4" />
                 </Button>
               ) : (
-                <Button data-testid="q-submit-btn" disabled={!canNext || submit.isPending} onClick={onSubmit} className="px-5">
-                  {submit.isPending ? "Finding options…" : "Show me where to start"}
+                <Button data-testid="q-submit-btn" disabled={!canNext || busy} onClick={onSubmit} className="px-5">
+                  {busy ? "Finding options…" : "Show me where to start"}
                 </Button>
               )}
             </div>
@@ -263,7 +277,7 @@ export default function Navigate() {
                 ))}
               </div>
             </div>
-            {visit.data?.questionnaire && (
+            {answers && (
               <aside data-testid="saved-answers-card" className="lg:col-span-5 rounded-3xl bg-eucalypt-deep text-white p-6 sm:p-8 animate-fade-up [animation-delay:100ms]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl">Your answers</h3>
@@ -272,18 +286,18 @@ export default function Navigate() {
                     size="sm"
                     data-testid="edit-answers-btn"
                     className="text-[#6EE7B7] hover:bg-white/10 hover:text-white"
-                    onClick={() => { setForm(visit.data!.questionnaire!); setEditing(true); setStep(0); }}
+                    onClick={() => { setForm(answers); setEditing(true); setStep(0); }}
                   >
                     <Pencil className="size-4" /> Edit
                   </Button>
                 </div>
                 <dl className="mt-4 space-y-3 text-sm">
                   {[
-                    ["Main concern", visit.data.questionnaire.main_concern],
-                    ["Duration", visit.data.questionnaire.duration],
-                    ["Seen someone before", visit.data.questionnaire.consulted_before === "yes" ? "Yes" : "Not yet"],
-                    ["Referral", visit.data.questionnaire.referral || "None"],
-                    ["Location", visit.data.questionnaire.location],
+                    ["Main concern", answers.main_concern],
+                    ["Duration", answers.duration],
+                    ["Seen someone before", answers.consulted_before === "yes" ? "Yes" : "Not yet"],
+                    ["Referral", answers.referral || "None"],
+                    ["Location", answers.location],
                   ].map(([k, val]) => (
                     <div key={k} className="border-b border-white/10 pb-2">
                       <dt className="text-xs uppercase tracking-[0.15em] text-[#ADC5BE]">{k}</dt>
@@ -292,7 +306,7 @@ export default function Navigate() {
                   ))}
                 </dl>
                 <p data-testid="consent-status" className="mt-4 text-xs text-[#ADC5BE]">
-                  {visit.data.questionnaire.consent_reuse
+                  {answers.consent_reuse
                     ? "✓ You agreed to reuse these answers to prepare for your appointment."
                     : "You chose not to reuse these answers — your preparation form will start blank."}
                 </p>

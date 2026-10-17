@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { vurl } from "@/lib/persona";
+import { useSignedIn, vurl } from "@/lib/persona";
 import { apiPost, apiPut } from "@/lib/api";
 import { formatDateTime, useCurrentPersona, useVisit, useVisitMutation } from "@/lib/hooks";
 import { PREP_LABELS } from "@/lib/types";
@@ -67,16 +67,49 @@ export default function Prep() {
       />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-8">
         {visit.isLoading && <div className="h-96 rounded-3xl ai-shimmer" />}
-        {(visit.isError || (v && !v.booking)) && (
-          <div data-testid="prep-no-booking" className="rounded-3xl border border-dashed border-line bg-white p-10 text-center">
-            <h2 className="text-2xl text-ink">Book an appointment first</h2>
-            <p className="mt-2 text-ink-muted">Your preparation brief is linked to a specific visit.</p>
-            <Link to="/patient/navigate" data-testid="prep-find-care-link" className={cn(buttonVariants(), "mt-5 rounded-full")}>Find care <ArrowRight className="size-4" /></Link>
-          </div>
-        )}
+        {!visit.isLoading && (visit.isError || !v?.booking) && <PrepEmpty />}
         {v?.booking && !visit.isError && <PrepWorkspace key={v.id + (v.prep ? "-saved" : "-new")} visit={v} />}
       </div>
     </AppShell>
+  );
+}
+
+/** The Prepare screen with nothing entered yet — shown to guests and to patients without a booking. */
+function PrepEmpty() {
+  const signedIn = useSignedIn();
+  return (
+    <div className="space-y-6">
+      <div data-testid="prep-no-booking" className="rounded-2xl bg-eucalypt-soft border border-eucalypt/20 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-eucalypt">
+          <strong>Nothing here yet.</strong> {signedIn ? "Book an appointment and your brief will be linked to that visit." : "Find care and sign in to book — then you can fill this in."}
+        </p>
+        <Link to="/patient/navigate" data-testid="prep-find-care-link" className={cn(buttonVariants(), "rounded-full")}>Find care <ArrowRight className="size-4" /></Link>
+      </div>
+      <div className="grid lg:grid-cols-12 gap-6 opacity-90">
+        <section data-testid="prep-empty-form" className="lg:col-span-5 rounded-3xl frost-card p-5 sm:p-6">
+          <h2 className="text-xl text-ink">Your details</h2>
+          <div className="mt-4 space-y-4">
+            {FIELDS.map((f) => (
+              <div key={f.key}>
+                <Label htmlFor={`prep-empty-${f.key}`} className="text-ink">{PREP_LABELS[f.key]}</Label>
+                <Textarea id={`prep-empty-${f.key}`} data-testid={`prep-empty-${f.key}-input`} disabled value="" rows={f.rows} placeholder={f.placeholder} className="mt-1.5 bg-cream min-h-0" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Button disabled className="h-11 px-5 rounded-full"><Sparkles className="size-4" /> Generate my brief</Button>
+            <Button variant="outline" disabled className="h-11 rounded-full">Save details</Button>
+          </div>
+        </section>
+        <section className="lg:col-span-7">
+          <div data-testid="brief-empty" className="rounded-3xl border border-dashed border-line bg-white/60 p-10 text-center lg:sticky lg:top-24">
+            <FileText className="mx-auto size-8 text-ink-muted" />
+            <h3 className="mt-3 text-xl text-ink">Your one-page brief will appear here</h3>
+            <p className="mt-1 text-sm text-ink-muted">Every point links back to what you wrote, and you choose whether your doctor sees it.</p>
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 

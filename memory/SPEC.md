@@ -47,3 +47,10 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 - Sign in / Sign up open `/patient/sign-in` (demo): pick Alex or Priya → sets persona → /patient. Link to clinician portal.
 - Home symptom box shows live "Might suit" service chips matched from `Service.keywords` (served by /api/services); guidance only.
 - Demo strip keeps a prominent red "In an emergency call 000" pill (tel link). Showcase has no "Try …" links.
+
+## Guest vs signed-in patient (latest)
+- Nobody is signed in by default (localStorage `visitready-signed-in`). Guests: useVisit is disabled on /patient/* → Prepare shows an empty, disabled form + empty brief; Follow-through shows every section (consultation, summary, checklist legend, calendar, timeline) empty.
+- Find care (home "Not sure? Tell us how you feel" or menu) → questionnaire step 1 "Not sure? Tell us how you feel" (Start) → 4 questions → guest suggestion via stateless POST /api/pathway/suggest (kept in localStorage `visitready-guest`).
+- Guest picks clinic time → "Sign in to book this time" → /patient/sign-in?next=book. Choosing Alex/Priya: POST /visit/reset (fresh empty journey EVERY sign-in), then carries over questionnaire + booking → lands on /patient/prep. Sign up = same picker, fresh journey.
+- Signed-in header: notification bell + avatar menu with Sign out. "Fill X's demo answers/details" buttons appear only when signed in.
+- Patient stepper is 3 steps (Find care → Prepare → Follow-through); Consult only in clinician area. GET /api/today gives server date for empty calendar.

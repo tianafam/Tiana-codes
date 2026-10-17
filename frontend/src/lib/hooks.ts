@@ -1,20 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useLocation } from "react-router-dom";
 import { ApiError, apiGet } from "@/lib/api";
-import { usePersonaId, vurl } from "@/lib/persona";
+import { usePersonaId, useSignedIn, vurl } from "@/lib/persona";
 import type { Clinic, Persona, Service, Transcript, Visit } from "@/lib/types";
 
 export const visitKey = (persona: string) => ["visit", persona] as const;
 
 export function useVisit() {
   const persona = usePersonaId();
-  return useQuery({ queryKey: visitKey(persona), queryFn: () => apiGet<Visit>(vurl("/visit")) });
+  const signedIn = useSignedIn();
+  const clinicianArea = useLocation().pathname.startsWith("/clinician");
+  // Guests have no journey yet — patient pages render their empty states. Clinicians always see the visit.
+  return useQuery({ queryKey: visitKey(persona), queryFn: () => apiGet<Visit>(vurl("/visit")), enabled: signedIn || clinicianArea });
 }
+/** Server-anchored "today" (Melbourne), for pages that render without a visit. */
+export const useToday = () => useQuery({ queryKey: ["today"], queryFn: () => apiGet<{ today: string }>("/today"), staleTime: 60_000 });
 export const usePersonas = () => useQuery({ queryKey: ["personas"], queryFn: () => apiGet<Persona[]>("/personas"), staleTime: Infinity });
 /** The active persona's profile + demo answers (undefined while loading / offline). */
 export function useCurrentPersona(): Persona | undefined {
   const id = usePersonaId();
-  return usePersonas().data?.find((p) => p.id === id);
+  const signedIn = useSignedIn();
+  const list = usePersonas().data;
+  return signedIn ? list?.find((p) => p.id === id) : undefined;
 }
 export const useClinics = () => useQuery({ queryKey: ["clinics"], queryFn: () => apiGet<Clinic[]>("/clinics") });
 export const useServices = () => useQuery({ queryKey: ["services"], queryFn: () => apiGet<Service[]>("/services") });
@@ -53,9 +61,8 @@ export function journeyStages(v?: Visit): Stage[] {
   return [
     { key: "find", label: "Find care & book", short: "Find care", path: "/patient/navigate", done: !!v?.booking },
     { key: "prep", label: "Prepare brief", short: "Prepare", path: "/patient/prep", done: v?.brief?.status === "saved" },
-    { key: "consult", label: "Clinician notes", short: "Consult", path: "/clinician", done: v?.consult.status === "approved" },
     {
-      key: "follow", label: "Follow through", short: "Follow up", path: "/patient/follow-through",
+      key: "follow", label: "Follow through", short: "Follow-through", path: "/patient/follow-through",
       done: tasks.length > 0 && tasks.every((t) => t.status === "completed"),
     },
   ];

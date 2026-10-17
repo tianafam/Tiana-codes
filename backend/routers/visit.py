@@ -99,6 +99,17 @@ async def list_services():
     return D.SERVICES
 
 
+@router.post("/pathway/suggest", response_model=PathwaySuggestion)
+async def suggest_pathway(body: Questionnaire):
+    """Stateless guidance for signed-out guests — nothing is saved until they sign in."""
+    return D.suggest_pathway(body.model_dump())
+
+
+@router.get("/today")
+async def get_today():
+    return {"today": today_iso(D.TZ)}
+
+
 @router.get("/clinics", response_model=list[Clinic])
 async def list_clinics():
     return D.clinics()

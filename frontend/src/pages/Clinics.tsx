@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ArrowRight, CalendarCheck, MapPin, Search, Star, Video } from "lucide-react";
 import AppShell from "@/components/AppShell";
@@ -9,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vurl } from "@/lib/persona";
+import { getGuest, setGuest, useSignedIn, vurl } from "@/lib/persona";
 import { apiPost } from "@/lib/api";
 import { useClinics, useServices, useVisit, useVisitMutation } from "@/lib/hooks";
 import type { BookingRequest, Clinic, Visit } from "@/lib/types";
@@ -59,8 +60,17 @@ export default function Clinics() {
 
   const selectClinic = (id: string) => { setSelectedId(id); setPracId(null); setDay(null); setSlotId(null); };
 
+  const signedIn = useSignedIn();
+  const navigate = useNavigate();
   const confirm = () => {
     if (!selected || !slot) return;
+    if (!signedIn) {
+      // Guests sign in first; their answers and chosen time carry over automatically.
+      setGuest({ ...getGuest(), booking: { clinic_id: selected.id, slot_id: slot.id, service_id: bookingService } });
+      toast.info("Sign in or sign up to confirm this time — your answers are saved");
+      navigate("/patient/sign-in?next=book");
+      return;
+    }
     book.mutate({ clinic_id: selected.id, slot_id: slot.id, service_id: bookingService }, { onSuccess: () => setConfirmOpen(true) });
   };
 
@@ -221,7 +231,7 @@ export default function Clinics() {
                     )}
                   </p>
                   <Button data-testid="confirm-booking-btn" disabled={!slot || book.isPending} onClick={confirm} className="h-11 px-6 rounded-full">
-                    {book.isPending ? "Confirming…" : "Confirm simulated booking"}
+                    {book.isPending ? "Confirming…" : signedIn ? "Confirm simulated booking" : "Sign in to book this time"}
                   </Button>
                 </div>
               </div>

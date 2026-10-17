@@ -6,9 +6,9 @@ import NotificationBell from "@/components/NotificationBell";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setPersona, usePersonaId } from "@/lib/persona";
+import { clearGuest, setSignedIn as setPatientSignedIn, useSignedIn } from "@/lib/persona";
 import { clinicianHome, setClinicianSignedIn, useClinicianSignedIn } from "@/lib/clinicianSession";
-import { useCurrentPersona, usePersonas } from "@/lib/hooks";
+import { useCurrentPersona } from "@/lib/hooks";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,12 +37,25 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
   const clinician = mode === "clinician";
   const { pathname } = useLocation();
   const inJourney = pathname.startsWith("/patient/") && pathname !== "/patient" && pathname !== "/patient/sign-in";
-  const personaId = usePersonaId();
   const clinicianSignedIn = useClinicianSignedIn();
-  const personas = usePersonas();
+  const patientSignedIn = useSignedIn();
   const persona = useCurrentPersona();
 
-  const doReset = () =>
+  const signOut = () => {
+    setPatientSignedIn(false);
+    clearGuest();
+    toast.success("Signed out");
+    navigate("/patient");
+  };
+
+  const doReset = () => {
+    if (!clinician && !patientSignedIn) {
+      clearGuest();
+      setResetOpen(false);
+      toast.success("Demo reset — your guest answers were cleared");
+      navigate("/patient");
+      return;
+    }
     reset.mutate(undefined, {
       onSuccess: () => {
         setResetOpen(false);
@@ -50,6 +63,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
         navigate("/patient");
       },
     });
+  };
 
   return (
     <div className={cn("min-h-screen flex flex-col", clinician ? "bg-[#F5F7F6]" : "bg-cream")}>
@@ -60,42 +74,6 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             Simulated journey with fictional patients, clinics and clinicians. Not a real healthcare service.
           </span>
           <span className="flex items-center gap-3">
-            {!clinician && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                data-testid="persona-switcher-btn"
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-0.5 text-[11px] text-ink hover:border-eucalypt/50 transition-colors duration-200"
-              >
-                Demo persona: <span data-testid="persona-current-name" className="font-semibold">{persona?.patient.name.split(" ")[0] ?? "Persona"}</span>
-                <ChevronDown className="size-3 text-ink-muted" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Demo persona</DropdownMenuLabel>
-                  {(personas.data ?? []).map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      data-testid={`persona-option-${p.id}`}
-                      onClick={() => {
-                        if (p.id === personaId) return;
-                        setPersona(p.id);
-                        toast.success(`Now demoing ${p.patient.name}`);
-                        navigate("/patient");
-                      }}
-                      className="items-start gap-3 py-2"
-                    >
-                      <span className="mt-0.5 size-7 rounded-full bg-eucalypt-soft text-eucalypt grid place-items-center text-[11px] font-semibold shrink-0">{p.initials}</span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-medium text-ink">{p.patient.name}, {p.patient.age}</span>
-                        <span className="block text-xs text-ink-muted">{p.tagline}</span>
-                      </span>
-                      {p.id === personaId && <Check className="size-4 text-eucalypt mt-1" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            )}
             <span data-testid="emergency-call-notice" className="inline-flex items-center gap-1.5 rounded-full bg-[#FEE2E2] text-[#991B1B] px-2.5 py-0.5 font-medium">
               <Phone className="size-3.5" /> In an emergency call <a href="tel:000" className="font-bold underline-offset-2 hover:underline">000</a>
             </span>
@@ -204,7 +182,30 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
                 <LogOut className="size-4" /> <span className="hidden lg:inline">Sign out</span>
               </Button>
             )}
-            {!clinician && (
+            {!clinician && patientSignedIn && (
+              <>
+                <NotificationBell audience="patient" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    data-testid="patient-account-btn"
+                    className="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 text-[15px] hover:border-eucalypt/50 transition-colors duration-200"
+                  >
+                    <span className="size-8 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-xs font-semibold">{persona?.initials ?? "…"}</span>
+                    <span data-testid="persona-current-name" className="hidden sm:inline font-medium text-ink">{persona?.patient.name.split(" ")[0] ?? ""}</span>
+                    <ChevronDown className="size-3.5 text-ink-muted" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>{persona ? `${persona.patient.name} · demo patient` : "Demo patient"}</DropdownMenuLabel>
+                      <DropdownMenuItem data-testid="patient-sign-out-btn" onClick={signOut} className="gap-2">
+                        <LogOut className="size-4" /> Sign out
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+            {!clinician && !patientSignedIn && (
               <>
                 <Button variant="ghost" data-testid="header-sign-in-btn" className="h-10 rounded-full px-5 text-[15px] font-medium text-ink hover:bg-eucalypt-soft hover:text-eucalypt" onClick={() => navigate("/patient/sign-in")}>
                   Sign in
@@ -245,7 +246,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
           <DialogHeader>
             <DialogTitle className="font-heading text-xl">Reset the demo?</DialogTitle>
             <DialogDescription>
-              This clears {persona?.patient.name ?? "this persona"}'s questionnaire, booking, brief, clinical notes and follow-up tasks so you can run the journey again.
+              {!clinician && !patientSignedIn ? "This clears any answers or appointment time you picked as a guest." : `This clears ${persona?.patient.name ?? "this patient"}'s questionnaire, booking, brief, clinical notes and follow-up tasks so you can run the journey again.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const ICONS = { find: Compass, prep: ClipboardCheck, consult: Stethoscope, follow: ListChecks } as const;
 
 function summary(key: string, v?: Visit): string {
-  if (!v) return "Loading…";
+  if (!v) return "Not started yet";
   switch (key) {
     case "find":
       if (v.booking) return `${v.booking.practitioner_name} at ${v.booking.clinic_name} · ${format(parseISO(v.booking.date), "EEE d MMM")} ${v.booking.time}`;
