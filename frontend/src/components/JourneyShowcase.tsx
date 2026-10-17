@@ -51,7 +51,7 @@ function Consult() {
         <p className="text-[11px] uppercase tracking-[0.15em] text-[#6EE7B7]">AI draft</p>
         <p className="mt-1 font-heading text-lg">Notes &amp; care plan ready to review</p>
       </div>
-      <p className="w-fit rotate-[-3deg] rounded-xl border-2 border-[#6EE7B7] px-4 py-2 font-semibold tracking-wide text-[#6EE7B7] animate-fade-up" style={d(800)}>
+      <p className="w-fit rounded-xl border-2 border-[#6EE7B7] px-4 py-2 font-semibold tracking-wide text-[#6EE7B7] animate-fade-up" style={d(800)}>
         <BadgeCheck className="inline size-4 mr-1.5" />APPROVED BY DR LIN
       </p>
     </div>
