@@ -76,7 +76,7 @@ export default function Navigate() {
 
       {!showResult ? (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6 grid lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 rounded-3xl bg-white border border-line p-6 sm:p-8 animate-fade-up">
+          <div className="lg:col-span-8 rounded-3xl frost-card p-6 sm:p-8 animate-fade-up">
             <div className="flex items-center justify-between gap-3">
               <span data-testid="questionnaire-step-indicator" className="font-mono text-xs text-ink-muted">
                 Question {step + 1} of 4
@@ -217,7 +217,7 @@ export default function Navigate() {
                 <li>A health professional will always assess you properly.</li>
               </ul>
             </div>
-            <div className="rounded-3xl border border-line bg-white p-6 text-sm text-ink-muted">
+            <div className="rounded-3xl frost-card p-6 text-sm text-ink-muted">
               <p className="text-ink font-medium">Not sure it can wait?</p>
               <p className="mt-1">Call healthdirect on <strong className="text-ink">1800 022 222</strong> for free advice from a registered nurse, 24/7.</p>
             </div>
@@ -226,7 +226,7 @@ export default function Navigate() {
       ) : (
         pathway && (
           <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6 grid lg:grid-cols-12 gap-8">
-            <div data-testid="pathway-suggestion-card" className="lg:col-span-7 rounded-3xl bg-white border border-line p-6 sm:p-8 animate-fade-up">
+            <div data-testid="pathway-suggestion-card" className="lg:col-span-7 rounded-3xl frost-card p-6 sm:p-8 animate-fade-up">
               <p className="tracking-[0.15em] uppercase text-xs font-semibold text-eucalypt">Suggested starting point</p>
               <h2 data-testid="pathway-service-name" className="mt-2 text-3xl text-ink">{pathway.service_name}</h2>
               <p className="mt-2 text-ink">{pathway.headline}.</p>

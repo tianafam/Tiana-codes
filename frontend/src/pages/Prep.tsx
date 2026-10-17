@@ -57,7 +57,7 @@ export default function Prep() {
         intro="Add what matters to you. AI organises your own words into a one-page brief — every point links back to what you wrote, and you decide whether your doctor sees it."
         aside={
           v?.booking && (
-            <div data-testid="prep-appointment-chip" className="rounded-2xl bg-white border border-line px-4 py-3 text-sm">
+            <div data-testid="prep-appointment-chip" className="rounded-2xl frost-card px-4 py-3 text-sm">
               <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Appointment</p>
               <p className="text-ink font-medium">{v.booking.practitioner_name}</p>
               <p className="text-ink-muted">{format(parseISO(v.booking.date), "EEE d MMM")} · {v.booking.time} · {v.booking.clinic_name}</p>
@@ -102,7 +102,7 @@ function PrepWorkspace({ visit }: { visit: Visit }) {
 
   return (
     <div className="grid lg:grid-cols-12 gap-6">
-      <section className="lg:col-span-5 rounded-3xl bg-white border border-line p-5 sm:p-6 animate-fade-up">
+      <section className="lg:col-span-5 rounded-3xl frost-card p-5 sm:p-6 animate-fade-up">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xl text-ink">Your details</h2>
           {persona && (
@@ -133,7 +133,7 @@ function PrepWorkspace({ visit }: { visit: Visit }) {
             >
               <div className="flex items-center justify-between">
                 <Label htmlFor={`prep-${f.key}`} className="text-ink">{PREP_LABELS[f.key]}</Label>
-                {prefilled.has(f.key) && <Badge data-testid={`prefilled-badge-${f.key}`} className="bg-eucalypt-soft text-eucalypt text-[10px]">From questionnaire</Badge>}
+                {prefilled.has(f.key) && <Badge data-testid={`prefilled-badge-${f.key}`} className="bg-eucalypt-soft text-eucalypt text-[11px]">From questionnaire</Badge>}
               </div>
               <Textarea
                 id={`prep-${f.key}`}
@@ -174,7 +174,7 @@ function PrepWorkspace({ visit }: { visit: Visit }) {
 
       <section className="lg:col-span-7">
         {generate.isPending ? (
-          <div data-testid="brief-generating" className="rounded-3xl bg-white border border-line p-6 space-y-3">
+          <div data-testid="brief-generating" className="rounded-3xl frost-card p-6 space-y-3">
             <p className="text-sm text-eucalypt flex items-center gap-2"><Sparkles className="size-4 animate-pulse" /> GPT-5.2 is organising your words into a brief…</p>
             {[80, 60, 90, 70, 50].map((w, i) => <div key={i} className="h-5 rounded-lg ai-shimmer" style={{ width: `${w}%` }} />)}
           </div>
@@ -207,10 +207,10 @@ function BriefEditor({ brief, visit, onHighlight }: { brief: Brief; visit: Visit
   };
 
   return (
-    <div data-testid="brief-card" className="rounded-3xl bg-white border border-line overflow-hidden lg:sticky lg:top-24 animate-fade-up">
+    <div data-testid="brief-card" className="rounded-3xl frost-card overflow-hidden lg:sticky lg:top-24 animate-fade-up">
       <div className="px-6 py-4 border-b border-line bg-sand/50 flex flex-wrap items-center gap-2 justify-between">
         <div>
-          <p className="tracking-[0.15em] uppercase text-[10px] font-semibold text-ink-muted">Appointment brief · {visit.patient.name}</p>
+          <p className="tracking-[0.15em] uppercase text-[11px] font-semibold text-ink-muted">Appointment brief · {visit.patient.name}</p>
           <h3 className="text-xl text-ink">For {visit.booking?.practitioner_name}</h3>
         </div>
         <div className="flex flex-wrap gap-1.5">

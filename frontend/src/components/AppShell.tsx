@@ -59,7 +59,43 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
             <span className="font-semibold text-terracotta tracking-[0.15em] uppercase mr-2">Demo</span>
             Simulated journey with fictional patients, clinics and clinicians. Not a real healthcare service.
           </span>
-          <span className="flex items-center gap-4">
+          <span className="flex items-center gap-3">
+            {!clinician && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                data-testid="persona-switcher-btn"
+                className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-0.5 text-[11px] text-ink hover:border-eucalypt/50 transition-colors duration-200"
+              >
+                Demo persona: <span data-testid="persona-current-name" className="font-semibold">{persona?.patient.name.split(" ")[0] ?? "Persona"}</span>
+                <ChevronDown className="size-3 text-ink-muted" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Demo persona</DropdownMenuLabel>
+                  {(personas.data ?? []).map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      data-testid={`persona-option-${p.id}`}
+                      onClick={() => {
+                        if (p.id === personaId) return;
+                        setPersona(p.id);
+                        toast.success(`Now demoing ${p.patient.name}`);
+                        navigate("/patient");
+                      }}
+                      className="items-start gap-3 py-2"
+                    >
+                      <span className="mt-0.5 size-7 rounded-full bg-eucalypt-soft text-eucalypt grid place-items-center text-[11px] font-semibold shrink-0">{p.initials}</span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium text-ink">{p.patient.name}, {p.patient.age}</span>
+                        <span className="block text-xs text-ink-muted">{p.tagline}</span>
+                      </span>
+                      {p.id === personaId && <Check className="size-4 text-eucalypt mt-1" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            )}
             <span className="flex items-center gap-1.5">
               <Phone className="size-3.5" /> In an emergency call <strong className="text-ink">000</strong>
             </span>
@@ -154,43 +190,16 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
               </Button>
             )}
             {!clinician && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                data-testid="persona-switcher-btn"
-                className="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 text-sm hover:border-eucalypt/50 transition-colors duration-200"
-              >
-                <span className="size-7 rounded-full bg-[#FCD34D] text-eucalypt-deep grid place-items-center text-[11px] font-semibold">{persona?.initials ?? "…"}</span>
-                <span data-testid="persona-current-name" className="hidden sm:inline text-ink">{persona?.patient.name.split(" ")[0] ?? "Persona"}</span>
-                <ChevronDown className="size-3.5 text-ink-muted" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Demo persona</DropdownMenuLabel>
-                  {(personas.data ?? []).map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      data-testid={`persona-option-${p.id}`}
-                      onClick={() => {
-                        if (p.id === personaId) return;
-                        setPersona(p.id);
-                        toast.success(`Now demoing ${p.patient.name}`);
-                        navigate("/patient");
-                      }}
-                      className="items-start gap-3 py-2"
-                    >
-                      <span className="mt-0.5 size-7 rounded-full bg-eucalypt-soft text-eucalypt grid place-items-center text-[11px] font-semibold shrink-0">{p.initials}</span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-medium text-ink">{p.patient.name}, {p.patient.age}</span>
-                        <span className="block text-xs text-ink-muted">{p.tagline}</span>
-                      </span>
-                      {p.id === personaId && <Check className="size-4 text-eucalypt mt-1" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <>
+                <Button variant="ghost" size="sm" data-testid="header-sign-in-btn" className="text-ink" onClick={() => toast.info("Demo only — no account needed. Use the demo persona above to explore.")}>
+                  Sign in
+                </Button>
+                <Button size="sm" data-testid="header-sign-up-btn" className="rounded-full bg-eucalypt hover:bg-eucalypt-deep text-white px-4" onClick={() => toast.info("Demo only — sign-up isn't available in this simulation.")}>
+                  Sign up
+                </Button>
+              </>
             )}
-            {(!clinician || clinicianSignedIn) && <NotificationBell audience={clinician ? "clinician" : "patient"} />}
+            {clinician && clinicianSignedIn && <NotificationBell audience={clinician ? "clinician" : "patient"} />}
             <Button variant="ghost" size="sm" data-testid="reset-demo-btn" onClick={() => setResetOpen(true)} className="text-ink-muted">
               <RotateCcw className="size-4" /> <span className="hidden lg:inline">Reset demo</span>
             </Button>

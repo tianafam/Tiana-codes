@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const ORDER: TaskCategory[] = ["urgent", "follow_up", "one_time", "daily"];
 
 function CategoryChip({ c }: { c: TaskCategory }) {
-  return <Badge className={cn("text-[10px] gap-1", CATEGORY_META[c].chip)}><span className={cn("size-1.5 rounded-full", CATEGORY_META[c].dot)} />{CATEGORY_META[c].label}</Badge>;
+  return <Badge className={cn("text-[11px] gap-1", CATEGORY_META[c].chip)}><span className={cn("size-1.5 rounded-full", CATEGORY_META[c].dot)} />{CATEGORY_META[c].label}</Badge>;
 }
 
 function schedule(t: Task, today: string): string | null {
@@ -89,7 +89,7 @@ export default function FollowThrough() {
           <>
             <div className="grid lg:grid-cols-12 gap-5">
               <div data-testid="followthrough-visit-card" className="lg:col-span-5 rounded-3xl bg-eucalypt-deep text-white p-6">
-                <p className="text-[10px] uppercase tracking-[0.15em] text-[#6EE7B7] flex items-center gap-1.5"><Stethoscope className="size-3.5" /> Your consultation</p>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-[#6EE7B7] flex items-center gap-1.5"><Stethoscope className="size-3.5" /> Your consultation</p>
                 <p className="mt-3 font-heading text-2xl">{v.consult.approved_by}</p>
                 <p className="text-sm text-[#ADC5BE]">General Practitioner · reviewed and approved your plan</p>
                 {v.booking && (
@@ -100,10 +100,10 @@ export default function FollowThrough() {
                   </dl>
                 )}
               </div>
-              <div data-testid="followthrough-results-card" className="lg:col-span-7 rounded-3xl bg-white border border-line p-6">
+              <div data-testid="followthrough-results-card" className="lg:col-span-7 rounded-3xl frost-card p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-xl text-ink">What happened at your visit</h2>
-                  <Badge variant="outline" className="text-[10px]"><Sparkles className="size-3" /> {v.consult.classified_by === "ai" ? "Plain-language summary · GPT-5.2" : "Prepared summary"}</Badge>
+                  <Badge variant="outline" className="text-[11px]"><Sparkles className="size-3" /> {v.consult.classified_by === "ai" ? "Plain-language summary · GPT-5.2" : "Prepared summary"}</Badge>
                 </div>
                 <p data-testid="patient-summary-text" className="mt-3 text-ink leading-relaxed">{v.consult.patient_summary ?? v.consult.notes?.assessment}</p>
                 <p className="mt-3 text-[11px] text-ink-muted">Summarised from your clinician's approved notes. It doesn't add new medical advice.</p>
@@ -113,7 +113,7 @@ export default function FollowThrough() {
             {suggested.length > 0 && <SuggestedTasks key={suggested.map((t) => t.id).join()} tasks={suggested} today={today} />}
 
             {todayDaily.length > 0 && (
-              <section data-testid="today-daily-section" className="rounded-3xl bg-white border border-line p-5 sm:p-6">
+              <section data-testid="today-daily-section" className="rounded-3xl frost-card p-5 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-2xl text-ink">Today · {format(parseISO(today), "EEEE d MMM")}</h2>
                   <CategoryChip c="daily" />
@@ -183,7 +183,7 @@ function SuggestedTasks({ tasks, today }: { tasks: Task[]; today: string }) {
   const byAi = tasks[0]?.classified_by === "ai";
 
   return (
-    <div data-testid="suggested-tasks" className="rounded-3xl bg-white border border-line p-5 sm:p-6 animate-fade-up">
+    <div data-testid="suggested-tasks" className="rounded-3xl frost-card p-5 sm:p-6 animate-fade-up">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex flex-wrap gap-1.5">
@@ -207,7 +207,7 @@ function SuggestedTasks({ tasks, today }: { tasks: Task[]; today: string }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <p className="font-medium text-ink">{t.title}</p>
                     <CategoryChip c={t.category} />
-                    {t.verbatim && <Badge data-testid={`verbatim-badge-${t.id}`} className="bg-terracotta-soft text-terracotta text-[10px]"><Lock className="size-2.5" /> Verbatim</Badge>}
+                    {t.verbatim && <Badge data-testid={`verbatim-badge-${t.id}`} className="bg-terracotta-soft text-terracotta text-[11px]"><Lock className="size-2.5" /> Verbatim</Badge>}
                   </div>
                   {schedule(t, today) && <p data-testid={`suggested-schedule-${t.id}`} className="mt-1 text-xs text-ink-muted">{schedule(t, today)}</p>}
                   <SourceQuote task={t} />
@@ -228,11 +228,11 @@ function TaskCard({ task, today, onToggle, busy }: { task: Task; today: string; 
   const finishedDaily = days.length > 0 && task.done_dates.length >= days.length;
 
   return (
-    <div data-testid={`task-card-${task.id}`} data-status={task.status} data-category={task.category} className={cn("rounded-2xl bg-white border border-line border-l-4 p-4", CATEGORY_META[task.category].border)}>
+    <div data-testid={`task-card-${task.id}`} data-status={task.status} data-category={task.category} className={cn("rounded-2xl frost-card border-l-4 p-4", CATEGORY_META[task.category].border)}>
       <div className="flex flex-wrap items-center gap-1.5">
         <p className={cn("font-medium text-ink", task.status === "completed" && "line-through text-ink-muted")}>{task.title}</p>
         <CategoryChip c={task.category} />
-        {task.status === "completed" && <Badge className="bg-[#DCFCE7] text-[#166534] text-[10px]"><BadgeCheck className="size-3" /> Done</Badge>}
+        {task.status === "completed" && <Badge className="bg-[#DCFCE7] text-[#166534] text-[11px]"><BadgeCheck className="size-3" /> Done</Badge>}
       </div>
       {schedule(task, today) && <p data-testid={`task-schedule-${task.id}`} className={cn("mt-1 text-xs", task.category === "follow_up" ? "text-[#1E40AF] font-medium" : task.category === "urgent" ? "text-[#991B1B]" : "text-ink-muted")}>{schedule(task, today)}</p>}
       <SourceQuote task={task} />
@@ -253,7 +253,7 @@ function TaskCard({ task, today, onToggle, busy }: { task: Task; today: string; 
                   disabled={future || busy}
                   onClick={() => onToggle(task, d, !checked)}
                   className={cn(
-                    "size-6 rounded-md border text-[9px] font-mono grid place-items-center transition-[background-color,border-color,transform] duration-150 active:scale-90",
+                    "size-6 rounded-md border text-[11px] font-mono grid place-items-center transition-[background-color,border-color,transform] duration-150 active:scale-90",
                     checked ? "bg-[#16A34A] border-[#16A34A] text-white" : future ? "border-dashed border-line text-ink-muted/50" : "border-[#86EFAC] text-[#166534] hover:bg-[#DCFCE7]",
                     d === today && !checked && "ring-2 ring-[#16A34A]/40",
                   )}

@@ -47,7 +47,7 @@ export default function Journey() {
         title={`${v?.patient.name ?? "Alex"}'s visit, end to end`}
         intro={
           <span>
-            Every step below is linked to one fictional visit <span data-testid="journey-visit-id" className="font-mono text-xs bg-sand rounded px-1.5 py-0.5">{v?.id ?? "visit-alex-001"}</span>.
+            Every step below is linked to one fictional visit <span data-testid="journey-visit-id" className="font-mono text-xs bg-sand text-ink rounded px-1.5 py-0.5">{v?.id ?? "visit-alex-001"}</span>.
           </span>
         }
         aside={

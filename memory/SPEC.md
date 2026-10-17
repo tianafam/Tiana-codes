@@ -39,3 +39,8 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 ## Homepage + nav (latest)
 - /patient homepage: headline, then a large photo banner with two frosted pathway cards: "Book the care you need" (service search + chips → /patient/clinics) and "Not sure? Tell us how you feel" (symptom input + examples "I have a fever" / "I have a sore throat" → /patient/navigate?concern=… which pre-fills Q1 and opens Q2). Below: JourneyShowcase (4 auto-advancing tabs with animated live previews, pause on hover) and Testimonials (horizontal scroll-snap carousel of fictional users).
 - Patient nav: Home + "My journey" dropdown (Journey overview, then 1 Find care, 2 Prepare, 3 Follow-through). Footer removed; the thin top DEMO strip carries the fictional / 000 notice.
+
+## UI update (latest)
+- Patient header: no signed-in look. Shows "Sign in" / "Sign up" (demo toasts only) and no notification bell. Persona switching moved to the DEMO strip ("Demo persona: Alex ▾", testid persona-switcher-btn). Clinician area keeps its bell after "Continue as Dr Sarah Lin".
+- Home JourneyShowcase is an accordion: each step's simple preview + "Try" link opens directly under that step's progress line.
+- Inner pages (Navigate/Prep/Follow-through/Journey/Clinics) use a frosted PageHeader band over the hero photo and `frost-card` utility cards.
