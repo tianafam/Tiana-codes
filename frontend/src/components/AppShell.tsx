@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, LogOut, RotateCcw, Stethoscope, User, Phone, Leaf } from "lucide-react";
 import DemoGuide from "@/components/DemoGuide";
 import NotificationBell from "@/components/NotificationBell";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { setPersona, usePersonaId } from "@/lib/persona";
 import { clinicianHome, setClinicianSignedIn, useClinicianSignedIn } from "@/lib/clinicianSession";
@@ -19,11 +19,15 @@ import { useVisitMutation } from "@/lib/hooks";
 import type { Visit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const PATIENT_NAV = [
+// "My journey" is the parent; its three steps live in a submenu instead of competing as top-level tabs.
+const JOURNEY_STEPS = [
+  { to: "/patient/navigate", label: "Find care", n: 1, id: "navigate" },
+  { to: "/patient/prep", label: "Prepare", n: 2, id: "prep" },
+  { to: "/patient/follow-through", label: "Follow-through", n: 3, id: "follow-through" },
+];
+const PATIENT_NAV: { to: string; label: string; id: string; n?: number }[] = [
+  { to: "/patient", label: "Home", id: "home" },
   { to: "/patient/journey", label: "My journey", id: "journey" },
-  { to: "/patient/navigate", label: "Find care", id: "navigate" },
-  { to: "/patient/prep", label: "Prepare", id: "prep" },
-  { to: "/patient/follow-through", label: "Follow-through", id: "follow-through" },
 ];
 
 export default function AppShell({ children, mode = "patient" }: { children: ReactNode; mode?: "patient" | "clinician" }) {
@@ -31,6 +35,8 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
   const [resetOpen, setResetOpen] = useState(false);
   const reset = useVisitMutation(() => apiPost<Visit>(vurl("/visit/reset")));
   const clinician = mode === "clinician";
+  const { pathname } = useLocation();
+  const inJourney = pathname.startsWith("/patient/") && pathname !== "/patient";
   const personaId = usePersonaId();
   const clinicianSignedIn = useClinicianSignedIn();
   const personas = usePersonas();
@@ -79,21 +85,41 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
 
           {!clinician && (
             <nav className="hidden md:flex items-center gap-1 ml-4">
-              {PATIENT_NAV.map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  data-testid={`nav-${n.id}-link`}
-                  className={({ isActive }) =>
-                    cn(
-                      "px-3 py-1.5 rounded-full text-sm transition-colors duration-200",
-                      isActive ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand",
-                    )
-                  }
+              <NavLink
+                to="/patient"
+                end
+                data-testid="nav-home-link"
+                className={({ isActive }) => cn("px-3 py-1.5 rounded-full text-sm transition-colors duration-200", isActive ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand")}
+              >
+                Home
+              </NavLink>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  data-testid="nav-journey-menu"
+                  className={cn(
+                    "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors duration-200",
+                    inJourney ? "bg-eucalypt-soft text-eucalypt font-medium" : "text-ink-muted hover:text-ink hover:bg-sand",
+                  )}
                 >
-                  {n.label}
-                </NavLink>
-              ))}
+                  My journey <ChevronDown className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-60">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem data-testid="nav-journey-link" onClick={() => navigate("/patient/journey")} className="font-medium">
+                      Journey overview
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Steps</DropdownMenuLabel>
+                    {JOURNEY_STEPS.map((j) => (
+                      <DropdownMenuItem key={j.to} data-testid={`nav-${j.id}-link`} onClick={() => navigate(j.to)} className="gap-2">
+                        <span className="size-5 rounded-full bg-sand text-ink-muted grid place-items-center text-[10px] font-semibold">{j.n}</span>
+                        {j.label}
+                        {pathname.startsWith(j.to) && <Check className="ml-auto size-4 text-eucalypt" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
           )}
           {clinician && (
@@ -171,17 +197,18 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
           </div>
         </div>
         {!clinician && (
-          <nav className="md:hidden flex gap-1 overflow-x-auto px-4 pb-2">
-            {PATIENT_NAV.map((n) => (
+          <nav className="md:hidden flex items-center gap-1 overflow-x-auto px-4 pb-2">
+            {[...PATIENT_NAV, ...JOURNEY_STEPS].map((n: { to: string; label: string; id: string; n?: number }) => (
               <NavLink
                 key={n.to}
                 to={n.to}
+                end={n.to === "/patient"}
                 data-testid={`mobile-nav-${n.id}-link`}
                 className={({ isActive }) =>
                   cn("px-3 py-1 rounded-full text-sm whitespace-nowrap", isActive ? "bg-eucalypt-soft text-eucalypt" : "text-ink-muted")
                 }
               >
-                {n.label}
+                {n.n ? <span className="text-ink-muted/70 mr-0.5">{n.n}.</span> : null}{n.label}
               </NavLink>
             ))}
           </nav>
@@ -190,12 +217,7 @@ export default function AppShell({ children, mode = "patient" }: { children: Rea
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-line mt-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 text-xs text-ink-muted flex flex-wrap gap-x-6 gap-y-2 justify-between">
-          <span>VisitReady is a concept demo. Suggestions are not diagnoses or triage decisions.</span>
-          <span>All people, clinics and transcripts are fictional. AI drafts require clinician approval.</span>
-        </div>
-      </footer>
+      <div className="h-16" aria-hidden />
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent data-testid="reset-demo-dialog">

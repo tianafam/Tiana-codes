@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Info, Pencil, ShieldCheck, Wand2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import EmergencyBanner from "@/components/EmergencyBanner";
@@ -46,9 +46,12 @@ export default function Navigate() {
   const visit = useVisit();
   const services = useServices();
   const persona = useCurrentPersona();
-  const [form, setForm] = useState<Questionnaire>(EMPTY);
-  const [step, setStep] = useState(0);
-  const [editing, setEditing] = useState(false);
+  // A concern typed on the homepage ("I have a fever") pre-fills question 1 and jumps to question 2.
+  const [params] = useSearchParams();
+  const initialConcern = params.get("concern") ?? "";
+  const [form, setForm] = useState<Questionnaire>({ ...EMPTY, main_concern: initialConcern });
+  const [step, setStep] = useState(initialConcern ? 1 : 0);
+  const [editing, setEditing] = useState(!!initialConcern);
   const submit = useVisitMutation((q: Questionnaire) => apiPost<Visit>(vurl("/visit/questionnaire"), q), "Answers saved");
 
   const pathway = visit.data?.pathway;

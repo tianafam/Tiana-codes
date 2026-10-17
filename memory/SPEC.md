@@ -35,3 +35,7 @@ lib/ai.py — OpenAI gpt-5.2 via emergentintegrations, JSON parsed from streamed
 - GET /api/visit/summary/pdf → patient visit summary PDF (404 until approved).
 - Colours: urgent red, daily green, follow-up blue, one-time amber (types.ts CATEGORY_META). Motivational quote (static list, by date) when all daily tasks for a day are ticked.
 - Clinician dashboard filters: All / Brief shared / Awaiting approval (client-side); the dashboard refetches every 5s.
+
+## Homepage + nav (latest)
+- /patient homepage: headline, then a large photo banner with two frosted pathway cards: "Book the care you need" (service search + chips → /patient/clinics) and "Not sure? Tell us how you feel" (symptom input + examples "I have a fever" / "I have a sore throat" → /patient/navigate?concern=… which pre-fills Q1 and opens Q2). Below: JourneyShowcase (4 auto-advancing tabs with animated live previews, pause on hover) and Testimonials (horizontal scroll-snap carousel of fictional users).
+- Patient nav: Home + "My journey" dropdown (Journey overview, then 1 Find care, 2 Prepare, 3 Follow-through). Footer removed; the thin top DEMO strip carries the fictional / 000 notice.
